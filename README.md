@@ -6,14 +6,16 @@ Website tĩnh gồm thiệp chúc mừng với nhận diện cử chỉ MediaPip
 
 - Chỉ có lưới ảnh vuông nền tối **phủ toàn bộ khung nhìn**, không thanh công cụ hay ô dấu +.
 - Tự tính **cả số hàng và số cột** theo chiều rộng/cao vùng hiển thị. JS truyền **chiều rộng cột bằng pixel** vào CSS thay vì phép `calc()/var()` không tương thích trên một số bản Safari iOS, tránh lỗi ô ảnh bị bó hẹp vào nửa trái màn hình. Hỗ trợ vùng an toàn iPhone khi xoay ngang, giữ nguyên 100dvh và tính lại khi thanh trình duyệt thay đổi kích thước (kể cả khi số hàng/cột không đổi). Lưới luôn chia hết chiều rộng và chiều cao, không lộ cột bị cắt khi đủ ảnh để lấp khung nhìn.
-- Cuộn ngang bằng cơ chế native của trình duyệt (`overflow-x: auto`, quán tính trên iOS), không có JS theo dõi cuộn. Chạm ảnh để xem lớn, vuốt trái/phải khi xem.
+- Trang lưới giữ cuộn ngang native trên iOS/Android; kéo-thả chuột PC cũng được.
+- Chạm vào ảnh sẽ mở **một dải card ảnh xếp ngang** (không còn viewer chỉ một ảnh): card giữa lớn/rõ, card bên cạnh nhìn thấy được, card tự căn giữa khi vuốt/kéo. **Không có mũi tên, số đếm, link ảnh gốc hoặc văn bản hướng dẫn** trong viewer; chỉ giữ nút đóng.
+- Viewer dùng `scroll-snap`, cuộn cảm ứng/quán tính native, mouse pointer drag PC, bánh xe/trackpad và phím mũi tên; khi có ảnh mới sẽ giữ ảnh đang xem và trì hoãn đồng bộ để tránh ngắt vuốt.
 - File chính: `gallery.html`, `css/gallery.css`, `js/gallery.js`, `js/photos.js`.
 
 ## Đưa ảnh vào thư viện
 
 **Trang gallery không có nút thêm ảnh.** Chỉ sau khi người dùng chụp bằng camera, xem thiệp và nhấn **Cóooooo!** tại câu hỏi chia sẻ, frontend mới gửi ảnh qua `POST /api/photos`. Nút **Không** đóng hộp thoại, không gửi dữ liệu. API `GET /api/photos` vẫn tự động tải danh sách ảnh.
 
-Chủ repository thêm ảnh JPG/PNG/WebP qua giao diện GitHub bằng cách tải file vào thư mục `photos/` hoặc `photos/YYYY/MM/`. Ngay sau khi commit lên nhánh `main`, frontend đang mở sẽ tự kiểm tra ảnh mới **mỗi 10 giây** (chỉ khi tab đang hiển thị), không cần tải lại trang. API dùng cache tại edge 10 giây và có thể phục vụ bản cũ thêm 5 giây, nên cập nhật gần thời gian thực nhưng không bảo đảm tức thời. Frontend chỉ bổ sung/cập nhật ô thay đổi, giữ vị trí lướt, trì hoãn cập nhật trong lúc đang vuốt và giữ nguyên ảnh đang xem fullscreen.
+Chủ repository thêm ảnh JPG/PNG/WebP qua giao diện GitHub bằng cách tải file vào thư mục `photos/` hoặc `photos/YYYY/MM/`. Ngay sau khi commit lên nhánh `main`, frontend đang mở sẽ tự kiểm tra ảnh mới **mỗi 10 giây** (chỉ khi tab đang hiển thị), không cần tải lại trang. API dùng cache tại edge 10 giây và có thể phục vụ bản cũ thêm 5 giây, nên cập nhật gần thời gian thực nhưng không bảo đảm tức thời. Frontend chỉ bổ sung/cập nhật ô thay đổi, giữ vị trí lướt, trì hoãn cập nhật trong lúc đang vuốt và giữ nguyên vị trí card đang xem fullscreen.
 
 Repo là public nên ảnh cũng công khai và có thể được xem qua `raw.githubusercontent.com`; chỉ thêm ảnh khi có quyền sử dụng/chia sẻ. **Để bật chia sẻ từ camera**, cần đặt `GITHUB_TOKEN` là fine-grained token có quyền **Contents: Read and write** cho riêng repo `hlounhh/20-10` trong **Vercel Environment Variables**, rồi redeploy. Token không được đưa vào frontend. Không yêu cầu mật khẩu người dùng. Không dùng GitHub Raw làm CDN ảnh quy mô lớn.
 
