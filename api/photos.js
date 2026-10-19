@@ -44,7 +44,8 @@ module.exports = async function handler(req, res) {
                 headers: {
                     Accept: 'application/vnd.github+json',
                     'X-GitHub-Api-Version': '2022-11-28',
-                    'User-Agent': '20-10-photo-gallery'
+                    'User-Agent': '20-10-photo-gallery',
+                    ...(process.env.GITHUB_TOKEN ? { Authorization: 'Bearer ' + process.env.GITHUB_TOKEN } : {})
                 },
                 signal: AbortSignal.timeout(14000)
             }
@@ -57,7 +58,7 @@ module.exports = async function handler(req, res) {
             .sort((a, b) => b.path.localeCompare(a.path))
             .slice(0, 400)
             .map(item => ({ id: item.path, url: rawUrl(item.path, item.sha) }));
-        res.setHeader('Cache-Control', 'public, s-maxage=12, stale-while-revalidate=45');
+        res.setHeader('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=5');
         return send(res, 200, { images });
     } catch (error) {
         console.error('Photo listing failed:', error.message);

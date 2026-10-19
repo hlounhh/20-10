@@ -13,7 +13,7 @@ Website tĩnh gồm thiệp chúc mừng với nhận diện cử chỉ MediaPip
 
 **Người xem không thể upload ảnh.** API `/api/photos` chỉ cho phép `GET`, các yêu cầu `POST` sẽ trả **405**. Không cần `GITHUB_TOKEN` hoặc mật khẩu upload trên Vercel nữa.
 
-Chủ repository thêm ảnh JPG/PNG/WebP qua giao diện GitHub bằng cách tải file vào thư mục `photos/` hoặc `photos/YYYY/MM/`. Sau commit lên nhánh `main`, trang gallery sẽ nhận diện file ảnh tự động (API có cache tối đa một khoảng ngắn).
+Chủ repository thêm ảnh JPG/PNG/WebP qua giao diện GitHub bằng cách tải file vào thư mục `photos/` hoặc `photos/YYYY/MM/`. Ngay sau khi commit lên nhánh `main`, frontend đang mở sẽ tự kiểm tra ảnh mới **mỗi 10 giây** (chỉ khi tab đang hiển thị), không cần tải lại trang. API dùng cache tại edge 10 giây và có thể phục vụ bản cũ thêm 5 giây, nên cập nhật gần thời gian thực nhưng không bảo đảm tức thời. Frontend chỉ bổ sung/cập nhật ô thay đổi, giữ vị trí lướt, trì hoãn cập nhật trong lúc đang vuốt và giữ nguyên ảnh đang xem fullscreen.
 
 Repo là public nên ảnh cũng công khai và có thể được xem qua `raw.githubusercontent.com`; chỉ thêm ảnh khi có quyền sử dụng/chia sẻ. Nếu trước đây đã tạo `GITHUB_TOKEN` chỉ để upload ảnh qua website, hãy thu hồi token đó để giảm rủi ro. Không dùng GitHub Raw làm CDN ảnh quy mô lớn.
 
@@ -26,3 +26,9 @@ Vẫn chụp ảnh bằng camera/MediaPipe và hiện thiệp; sau đó có th�
 - `python -m http.server 8000` chỉ phục vụ frontend, không có API.
 - `npx vercel dev` chạy cả trang và API đọc ảnh.
 - Camera hoạt động khi dùng HTTPS hoặc localhost.
+
+## Lưu ý về tần suất đồng bộ
+
+- `js/gallery.js`: `REFRESH_MS = 10000`; đồng bộ ngay khi quay lại tab.
+- `api/photos.js`: edge cache `s-maxage=10, stale-while-revalidate=5` hạn chế request vào GitHub.
+- GitHub API ẩn danh có giới hạn lượt gọi; với lưu lượng cao nên dùng `GITHUB_TOKEN` **read-only** làm biến môi trường Vercel (không phải token upload) hoặc tăng khoảng polling/cache. API vẫn không hỗ trợ POST.
