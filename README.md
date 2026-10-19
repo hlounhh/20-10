@@ -1,70 +1,28 @@
-# 20-10 — Thiệp chúc mừng tương tác
+# 20-10 — Thiệp tương tác và kho ảnh toàn màn hình
 
-Website tĩnh dùng camera và MediaPipe Hands để nhận diện cử chỉ trái tim, sau đó mở thiệp và cho phép chia sẻ ảnh. Bản refactor này **chỉ tách mã nguồn thành các file nhỏ**, giữ nguyên giao diện, CSS, thuật toán nhận diện, API và nội dung gốc (kể cả lời chúc 8/3 trong phiên bản hiện có).
+Website tĩnh gồm thiệp chúc mừng với nhận diện cử chỉ MediaPipe và thư viện ảnh chỉ xem.
 
-## Cấu trúc
+## Trang kho ảnh `/gallery.html`
 
-```
-20-10/
-├── index.html             # HTML/SVG markup, tải CSS và JS
-├── css/
-│   ├── base.css           # Reset, font, biến màu
-│   ├── camera.css         # Camera, loader, trạng thái và nút chụp
-│   ├── scene.css          # Cảnh thiệp, phong bì, hoa, ruy băng
-│   └── share.css          # Hộp thoại chia sẻ ảnh
-└── js/
-    ├── elements.js       # Tham chiếu DOM dùng chung
-    ├── main.js           # Điểm khởi chạy, gắn các sự kiện
-    ├── handTracking.js   # Camera, MediaPipe, nhận diện cử chỉ
-    ├── capture.js        # Chụp ảnh canvas và hiệu ứng flash
-    ├── card.js           # Hiển thị/đóng cảnh thiệp
-    └── share.js          # Hộp thoại và upload ảnh
-```
+- Chỉ có lưới ảnh vuông nền tối **phủ toàn bộ khung nhìn**, không thanh công cụ hay ô dấu +.
+- Tự tính số hàng theo chiều cao màn hình và số ô trống tối thiểu để che kín chiều ngang; không còn khoảng trống lớn dưới hai hàng ảnh.
+- Cuộn ngang bằng cơ chế native của trình duyệt (`overflow-x: auto`, quán tính trên iOS), không có JS theo dõi cuộn. Chạm ảnh để xem lớn, vuốt trái/phải khi xem.
+- File chính: `gallery.html`, `css/gallery.css`, `js/gallery.js`, `js/photos.js`.
 
-## Chạy thử ở máy tính
+## Đưa ảnh vào thư viện
 
-Dự án không yêu cầu npm hay build. Mở terminal ở thư mục repo và chạy:
+**Người xem không thể upload ảnh.** API `/api/photos` chỉ cho phép `GET`, các yêu cầu `POST` sẽ trả **405**. Không cần `GITHUB_TOKEN` hoặc mật khẩu upload trên Vercel nữa.
 
-```bash
-python -m http.server 8000
-```
+Chủ repository thêm ảnh JPG/PNG/WebP qua giao diện GitHub bằng cách tải file vào thư mục `photos/` hoặc `photos/YYYY/MM/`. Sau commit lên nhánh `main`, trang gallery sẽ nhận diện file ảnh tự động (API có cache tối đa một khoảng ngắn).
 
-Mở `http://localhost:8000`, cho phép camera và kiểm tra Console/Network trong DevTools để debug. Dùng HTTP server thay vì mở `index.html` bằng `file://`, vì các ES modules yêu cầu nguồn hợp lệ. Khi deploy, cần HTTPS để trình duyệt cấp quyền camera.
+Repo là public nên ảnh cũng công khai và có thể được xem qua `raw.githubusercontent.com`; chỉ thêm ảnh khi có quyền sử dụng/chia sẻ. Nếu trước đây đã tạo `GITHUB_TOKEN` chỉ để upload ảnh qua website, hãy thu hồi token đó để giảm rủi ro. Không dùng GitHub Raw làm CDN ảnh quy mô lớn.
 
-## Kiểm tra thủ công sau refactor
+## Camera
 
-1. Camera hiển thị và loader biến mất khi có frame đầu tiên.
-2. Hai bàn tay ghép trái tim đủ 500 ms kích hoạt chụp.
-3. Nút **Chụp thủ công** vẫn dùng được.
-4. Phong bì, thiệp, bó hoa và ruy băng hiển thị theo đúng thứ tự.
-5. Chạm thiệp sẽ hiện hộp thoại chia sẻ; nút **Không** đóng hộp thoại.
-6. Nút **Có** thực hiện quy trình upload cũ (chỉ thử với ảnh được phép chia sẻ).
+Vẫn chụp ảnh bằng camera/MediaPipe và hiện thiệp; sau đó có thể **tải ảnh về thiết bị**, không tải ảnh lên GitHub.
 
+## Chạy thử
 
-## Kho ảnh ngang tối giản (/gallery.html)
-
-- Trang chỉ hiển thị **lưới 2 hàng ô vuông nền tối và nút +**, sát mép trên, không có header, footer, điều hướng, album wrapper hay text phụ. Vuốt ngang native với cuộn quán tính trên iOS và Android, không có JS scroll handler.
-- Ô **+** chọn tối đa 10 ảnh; ảnh được co về tối đa 1440px và nén JPEG tại trình duyệt trước khi tải lên.
-- Click/tap xem ảnh lớn, vuốt trái/phải để chuyển ảnh; nút mũi tên cho máy tính.
-- CSS: `css/gallery.css`. UI: `js/gallery.js`. Client API chung: `js/upload.js`.
-- API: `api/photos.js` (Vercel Node.js Function), dùng GitHub Contents REST API ghi ảnh và Git Tree API đọc danh sách.
-- Ảnh được lưu trong `photos/YYYY/MM/` của repository và được hiển thị bằng `raw.githubusercontent.com` (đường dẫn đọc ảnh trực tiếp của GitHub). Không dùng jsDelivr, vì điều khoản của CDN đó không cho phép sử dụng như một dịch vụ lưu trữ ảnh upload.
-
-### BẮT BUỘC cấu hình trên Vercel
-
-Vào Vercel → Project → Settings → Environment Variables, thêm:
-- `GITHUB_TOKEN`: fine-grained Personal Access Token chỉ cấp **Contents: Read and write** cho repo `hlounhh/20-10`. Token phải được lưu ở phía máy chủ, tuyệt đối không thêm vào JS frontend/repo. Không cần `GALLERY_UPLOAD_KEY` nữa.
-- `GITHUB_REPOSITORY` (tuỳ chọn, mặc định `hlounhh/20-10`), `GITHUB_BRANCH` (tuỳ chọn, mặc định `main`).
-
-Sau khi thêm `GITHUB_TOKEN`, **Redeploy** bản production. Nếu thiếu token, trang thư viện vẫn hiển thị nhưng thao tác đăng ảnh sẽ trả lỗi 503. Có thể xoá biến `GALLERY_UPLOAD_KEY` cũ khỏi Vercel. Nên thu hồi credential cũ từng bị nhúng trong JS công khai của dịch vụ trước đó.
-
-> **Riêng tư:** repo là public, mọi ảnh đăng lên có thể được xem/tải bởi bất kỳ ai. Xoá file không đảm bảo xoá lịch sử Git và cache ngoài. Chỉ đăng khi có sự đồng ý của người trong ảnh. Không dùng GitHub làm kho ảnh dung lượng lớn; GitHub Raw không có cam kết SLA CDN ảnh. Khi dự án phát triển, cân nhắc GitHub Pages cho asset tĩnh và object storage (R2/S3/Supabase Storage) cho ảnh do người dùng upload.
-
-### Chạy thử
-
-- Chạy frontend: `python -m http.server 8000`. API serverless sẽ **không chạy** với lệnh này.
-- Chạy cả API: `npx vercel dev` (cần đăng nhập Vercel và cấu hình biến môi trường như trên).
-- Mở `/gallery.html`, thử cuộn quán tính trên điện thoại, xem ảnh và upload.
-- Nút chia sẻ ảnh ở `index.html` gọi `/api/photos` rồi chuyển về trang gallery; người dùng không cần nhập mật khẩu.
-
-**Quan trọng:** Bất kỳ ai biết địa chỉ website đều có thể gửi ảnh trực tiếp vào repo public thông qua API này. Giới hạn kích thước và định dạng tệp hiện có không ngăn spam, upload hàng loạt hoặc nội dung không mong muốn. Trước khi công khai, cần bật **Vercel Firewall / rate limiting** cho `POST /api/photos` và cân nhắc CAPTCHA hoặc xác thực không cần mật khẩu nếu lưu lượng tăng. Nếu không thể giám sát và giới hạn, không nên bật upload công khai. GitHub sẽ tạo commit mới cho mỗi ảnh, vì vậy chỉ phù hợp album nhỏ/demo; không thích hợp làm dịch vụ hosting ảnh quy mô lớn.
+- `python -m http.server 8000` chỉ phục vụ frontend, không có API.
+- `npx vercel dev` chạy cả trang và API đọc ảnh.
+- Camera hoạt động khi dùng HTTPS hoặc localhost.
