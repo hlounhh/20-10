@@ -1,4 +1,4 @@
-import { captureManually, startCamera } from './handTracking.js';
+import { captureManually, startCamera } from './handTracking.js?v=pose-countdown-16';
 import { closeShare, saveImg } from './share.js';
 import { initializeCard } from './card.js';
 
