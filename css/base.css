@@ -1,0 +1,23 @@
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        :root {
+            --rose: #ff4d6d;
+            --deep: #c9184a;
+            --blush: #ffb3c1;
+            --ink: #1a0a0f;
+            --glass: rgba(255, 255, 255, 0.08)
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            font-family: 'Be Vietnam Pro', sans-serif
+        }
+
