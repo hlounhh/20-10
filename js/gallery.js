@@ -14,7 +14,6 @@ let images = [];
 let viewing = 0;
 let touchStart = null;
 let messageTimer;
-let scrollScheduled = false;
 
 function status(text, temporary = false) {
     const el = $('message');
@@ -23,10 +22,6 @@ function status(text, temporary = false) {
         clearTimeout(messageTimer);
         messageTimer = setTimeout(() => { el.textContent = 'Vuốt ngang để xem thêm ảnh.'; }, 3500);
     }
-}
-function updateArrows() {
-    $('prev').disabled = track.scrollLeft < 4;
-    $('next').disabled = track.scrollLeft + track.clientWidth >= track.scrollWidth - 4;
 }
 function showImage(index) {
     if (!images.length) return;
@@ -73,8 +68,6 @@ function render() {
     }
     track.append(fragment);
     track.scrollLeft = previousScroll;
-    $('count').textContent = images.length + ' tấm ảnh';
-    requestAnimationFrame(updateArrows);
 }
 async function refresh() {
     try {
@@ -103,17 +96,6 @@ uploadDialog.addEventListener('click', e => { if (e.target === uploadDialog) upl
 fileInput.addEventListener('change', () => {
     $('fileLabel').textContent = fileInput.files.length ? fileInput.files.length + ' ảnh được chọn' : 'Chạm để chọn ảnh';
 });
-track.addEventListener('scroll', () => {
-    if (scrollScheduled) return;
-    scrollScheduled = true;
-    requestAnimationFrame(() => { scrollScheduled = false; updateArrows(); });
-}, { passive: true });
-const step = () => {
-    const css = getComputedStyle(track);
-    return parseFloat(css.gridAutoColumns) + parseFloat(css.columnGap);
-};
-$('prev').addEventListener('click', () => track.scrollBy({ left: -step() * 2, behavior: 'smooth' }));
-$('next').addEventListener('click', () => track.scrollBy({ left: step() * 2, behavior: 'smooth' }));
 $('closeViewer').addEventListener('click', () => viewer.close());
 $('viewerPrev').addEventListener('click', () => showImage(viewing - 1));
 $('viewerNext').addEventListener('click', () => showImage(viewing + 1));

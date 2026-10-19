@@ -41,9 +41,9 @@ Mở `http://localhost:8000`, cho phép camera và kiểm tra Console/Network tr
 6. Nút **Có** thực hiện quy trình upload cũ (chỉ thử với ảnh được phép chia sẻ).
 
 
-## Kho ảnh ngang (/gallery.html)
+## Kho ảnh ngang tối giản (/gallery.html)
 
-- Dựng 2 hàng ô vuông, vuốt ngang native với cuộn quán tính trên iOS và Android; không dùng thư viện carousel hay animation kéo bằng JS.
+- Trang chỉ hiển thị **lưới 2 hàng ô vuông nền tối và nút +**, sát mép trên, không có header, footer, điều hướng, album wrapper hay text phụ. Vuốt ngang native với cuộn quán tính trên iOS và Android, không có JS scroll handler.
 - Ô **+** chọn tối đa 10 ảnh; ảnh được co về tối đa 1440px và nén JPEG tại trình duyệt trước khi tải lên.
 - Click/tap xem ảnh lớn, vuốt trái/phải để chuyển ảnh; nút mũi tên cho máy tính.
 - CSS: `css/gallery.css`. UI: `js/gallery.js`. Client API chung: `js/upload.js`.
