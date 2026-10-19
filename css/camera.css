@@ -142,3 +142,65 @@
             font-family: 'Be Vietnam Pro', sans-serif
         }
 
+
+        /* Compact photo-booth timer at the top, leaving the face/pose unobscured. */
+        .pose-countdown[hidden] { display: none !important; }
+        .pose-countdown {
+            position: absolute;
+            top: max(73px, env(safe-area-inset-top, 0px));
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            gap: 9px;
+            max-width: calc(100vw - 26px);
+            padding: 7px 13px 7px 9px;
+            border: 1px solid rgba(255, 189, 214, .55);
+            border-radius: 100px;
+            background: rgba(46, 17, 36, .65);
+            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 5px 20px rgba(30, 4, 19, .18);
+            color: #ffe7f2;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            pointer-events: none;
+            user-select: none;
+        }
+        .pose-countdown-number {
+            flex: 0 0 auto;
+            min-width: 28px;
+            text-align: center;
+            color: #ffa2c9;
+            font-size: 27px;
+            font-weight: 800;
+            line-height: 1.1;
+            text-shadow: 0 0 12px rgba(255, 135, 190, .45);
+            font-variant-numeric: tabular-nums;
+        }
+        .pose-countdown-message {
+            font-size: 11px;
+            line-height: 1.35;
+            font-weight: 600;
+            letter-spacing: .01em;
+            text-align: left;
+            white-space: nowrap;
+        }
+        @keyframes poseCountTick {
+            from { transform: scale(1.16); opacity: .75; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .pose-countdown-number.tick { animation: poseCountTick .2s ease-out both; }
+        @media (max-width: 460px) {
+            .pose-countdown {
+                top: max(106px, calc(env(safe-area-inset-top, 0px) + 80px));
+                padding: 6px 10px;
+                gap: 7px;
+            }
+            .pose-countdown-number { font-size: 24px; min-width: 25px; }
+            .pose-countdown-message { font-size: 10px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .pose-countdown-number.tick { animation: none; }
+        }

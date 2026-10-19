@@ -42,3 +42,12 @@ Vẫn chụp ảnh bằng camera/MediaPipe và hiện thiệp. Sau khi người 
 - Sau khi chụp, phải thả cử chỉ ít nhất 300ms để chụp tiếp. Camera sẽ không tự chụp lại hoặc ghi đè ảnh trong lúc thiệp / hộp hỏi chia sẻ đang mở.
 - Phản hồi trên màn hình hướng dẫn chỗ đặt ngón trỏ và ngón cái. Thuật toán chỉ xét bàn tay, không nhận diện khuôn mặt; tình huống gần mặt được từ chối dựa vào **hình học cử chỉ**, không phải xác thực danh tính.
 - Kiểm thử hình học và bộ giữ cử chỉ: `node tests/heartGesture.test.mjs`. Tư thế kiểm thử là landmarks **giả lập**, cần thử camera thật trên iPhone/PC và tinh chỉnh ngưỡng theo kết quả.
+
+## Photo Booth — đếm ngược tạo dáng (20/10)
+
+- Khi hệ thống nhận diện trái tim **giữ đúng 600ms**, hoặc khi nhấn **Chụp thủ công**, sẽ bắt đầu **đếm 5→1 trong 5 giây** rồi mới chụp từ luồng video hiện tại.
+- Số đếm và lời nhắn tạo dáng nằm trong một **viên kính hồng nhỏ sát đầu màn hình**, không che trung tâm camera. Người dùng **được thả tay tạo dáng** trong thời gian đếm; không phải tiếp tục giữ trái tim.
+- Lời nhắn: “Tạo dáng xinh lên nàooo!”, “Bỏ tay xuống, pose nào!”, “Cười thật tươi nha!”, “Nhìn vào camera nhé!”, “Cheeseeee!”. Đồng hồ tính từ `performance.now()`, không phụ thuộc FPS.
+- Chỉ có một countdown/chụp tại một thời điểm; bỏ sang tab khác, camera bị tạm dừng/ngắt hay thiệp mở bất thường sẽ hủy countdown. Sau khi chụp vẫn phải thả cử chỉ trước khi trigger tiếp, ảnh không bị ghi đè trong thiệp và modal chia sẻ.
+- Giữ nguyên hỏi đồng ý trước khi chia sẻ ảnh lên GitHub; countdown **không upload ảnh**.
+- Unit test: `node tests/photoCountdown.test.mjs`.
