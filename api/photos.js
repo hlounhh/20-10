@@ -10,24 +10,27 @@ const ROOT = 'photos/';
 const MAX_BYTES = 2_350_000;
 const MAX_BODY = 3_250_000;
 
-// Strict minute-only filenames in Vietnamese local time. The GitHub Contents
-// API refuses to create an existing path without sha, so uploads never overwrite.
-function photoMinuteName(date = new Date()) {
+// Timestamp filenames (to the second) in Vietnam local time.
+// GitHub refuses to overwrite an existing file when no sha is provided.
+function photoSecondName(date = new Date()) {
     const parts = new Intl.DateTimeFormat('en-GB', {
         timeZone: 'Asia/Ho_Chi_Minh',
         year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
     }).formatToParts(date);
     const p = Object.fromEntries(parts.map(x => [x.type, x.value]));
-    return p.year + '-' + p.month + '-' + p.day + '_' + p.hour + '-' + p.minute;
+    return p.year + '-' + p.month + '-' + p.day + '_' +
+        p.hour + '-' + p.minute + '-' + p.second;
 }
 function photoSortKey(path) {
     const name = path.split('/').pop();
-    const modern = /^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})\./.exec(name);
-    if (modern) return Number(modern.slice(1,6).join(''));
+    // Both the new second-precision names and the earlier minute-only names.
+    // Treat minute-only files as :00 so old gallery order stays chronological.
+    const modern = /^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})(?:-(\d{2}))?\./.exec(name);
+    if (modern) return Number(modern.slice(1, 6).join('') + (modern[6] || '00'));
     // Historical files: photos/YYYY/MM/YYYYMMDDHHmmss-random.jpg
-    const legacy = /^(20\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(name);
-    return legacy ? Number(legacy.slice(1,6).join('')) : 0;
+    const legacy = /^(20\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(name);
+    return legacy ? Number(legacy.slice(1, 7).join('')) : 0;
 }
 
 
@@ -112,6 +115,33 @@ async function github(url, options = {}) {
     }
     return data;
 }
+// If two visitors send in exactly the same second, retry under the next
+// second's date-time name. No counters/random text and never overwrite photos.
+async function uploadWithTimestamp(image) {
+    const MAX_ATTEMPTS = 3;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        const path = ROOT + photoSecondName() + '.' + image.ext;
+        try {
+            const saved = await github('contents/' + path, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: 'photos: add shared 20-10 camera image',
+                    content: image.bytes.toString('base64'),
+                    branch: BRANCH
+                })
+            });
+            return { path, saved };
+        } catch (error) {
+            // GitHub may return 422 for a preexisting path and 409 for a
+            // concurrent branch update. Retry with another second.
+            if (![409, 422].includes(error.status) || attempt === MAX_ATTEMPTS - 1) throw error;
+            const untilNextSecond = 1000 - (Date.now() % 1000) + 35;
+            await new Promise(resolve => setTimeout(resolve, untilNextSecond));
+        }
+    }
+}
+
 module.exports = async function handler(req, res) {
     if (req.method === 'OPTIONS') {
         res.setHeader('Allow', 'GET, POST, OPTIONS');
@@ -155,24 +185,14 @@ module.exports = async function handler(req, res) {
             return send(res, 400, { error: 'Chỉ hỗ trợ JPG, PNG, WebP dưới 2,35 MB.' });
         }
 
-        const name = photoMinuteName() + '.' + image.ext;
-        const path = ROOT + name;
-        const saved = await github('contents/' + path, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                message: 'photos: add shared 20-10 camera image',
-                content: image.bytes.toString('base64'),
-                branch: BRANCH
-            })
-        });
+        const { path, saved } = await uploadWithTimestamp(image);
         const commit = saved.commit?.sha || BRANCH;
         return send(res, 201, { path, url: rawUrl(path, commit) });
     } catch (error) {
         console.error('Photo API error:', error.message);
         if (error.status === 409 || error.status === 422) {
             return send(res, 409, {
-                error: 'Đã có ảnh đăng trong phút này. Vui lòng đợi sang phút tiếp theo, không ghi đè ảnh cũ.'
+                error: 'Ảnh được gửi cùng lúc với ảnh khác. Vui lòng thử lại sau vài giây.'
             });
         }
         if (error.status === 401 || error.status === 403) {
