@@ -145,7 +145,7 @@ function readImage(file) {
     });
 }
 async function optimize(file) {
-    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error('Chỉ hỗ trợ JPG, PNG hoặc WebP.');
+    if (!/^image\/(jpeg|png|webp|heic|heif)$/.test(file.type)) throw new Error('Chỉ hỗ trợ định dạng ảnh thông dụng.');
     if (file.size > 15 * 1024 * 1024) throw new Error('Ảnh gốc vượt quá 15 MB.');
     const img = await readImage(file);
     const maxSide = 1440;
@@ -168,7 +168,8 @@ uploadForm.addEventListener('submit', async e => {
     e.preventDefault();
     const files = Array.from(fileInput.files);
     const key = keyInput.value.trim();
-    if (!files.length || !key) { uploadForm.reportValidity(); return; }
+    if (!files.length) { $('uploadStatus').textContent = 'Hãy chọn ít nhất một ảnh.'; return; }
+    if (!key) { keyInput.focus(); uploadForm.reportValidity(); return; }
     if (files.length > 10) { $('uploadStatus').textContent = 'Chỉ chọn tối đa 10 ảnh mỗi lần.'; return; }
     submitButton.disabled = true;
     let saved = 0;
