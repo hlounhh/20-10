@@ -34,3 +34,11 @@ Vẫn chụp ảnh bằng camera/MediaPipe và hiện thiệp. Sau khi người 
 - GitHub API ẩn danh có giới hạn lượt gọi; khi cần chia sẻ ảnh qua camera, đặt `GITHUB_TOKEN` **Contents: Read and write** ở Vercel. API hỗ trợ `POST` để lưu ảnh chỉ khi frontend gọi sau thao tác đồng ý. **Đây không phải cơ chế xác thực phía server**: người khác có thể tự gọi endpoint công khai. Kiểm tra Origin, giới hạn kích thước và định dạng giúp giảm một số rủi ro nhưng không chống spam. Hãy bật Vercel Firewall / rate limit cho POST trước khi chia sẻ rộng rãi.
 
 **Cảnh báo vận hành:** Mỗi ảnh upload tạo commit trong repo. Nếu token upload cũ đã được thu hồi, cần tạo token mới và redeploy Vercel. Không có token thì gallery vẫn xem được ảnh cũ, nhưng chia sẻ mới sẽ báo lỗi.
+
+## Cử chỉ trái tim hai tay (bộ nhận diện mới)
+
+- `js/heartGesture.js`: thay điều kiện chỉ dùng 4 đầu ngón bằng kiểm tra hai lòng bàn tay tách nhau, ngón trỏ hướng vào giữa, ngón cái hướng vào trong và xuống, đỉnh chữ V dưới, hai nửa hình cân xứng, độ mở chiều cao/rộng, tỉ lệ tay và tỉ lệ khung video. Không yêu cầu đầu ngón chạm tuyệt đối.
+- Giữ cử chỉ đúng **600 ms** và tối thiểu 6 frame. Thiếu một tay reset ngay; rung ngắn dưới 90ms được chấp nhận nhưng không cộng thời gian sai. Mất tín hiệu lâu thì reset.
+- Sau khi chụp, phải thả cử chỉ ít nhất 300ms để chụp tiếp. Camera sẽ không tự chụp lại hoặc ghi đè ảnh trong lúc thiệp / hộp hỏi chia sẻ đang mở.
+- Phản hồi trên màn hình hướng dẫn chỗ đặt ngón trỏ và ngón cái. Thuật toán chỉ xét bàn tay, không nhận diện khuôn mặt; tình huống gần mặt được từ chối dựa vào **hình học cử chỉ**, không phải xác thực danh tính.
+- Kiểm thử hình học và bộ giữ cử chỉ: `node tests/heartGesture.test.mjs`. Tư thế kiểm thử là landmarks **giả lập**, cần thử camera thật trên iPhone/PC và tinh chỉnh ngưỡng theo kết quả.

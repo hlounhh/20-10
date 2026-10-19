@@ -1,53 +1,111 @@
-import { v, c, ctx, badge, loader, ldtxt } from './elements.js';
+import { v, c, ctx, badge, loader, ldtxt, scene, mShare } from './elements.js';
 import { capture } from './capture.js';
+import { evaluateHeartPose, createHoldState, resetHold, stepHold } from './heartGesture.js';
 
-// MediaPipe globals (Hands, Camera, drawConnectors, etc.) are loaded by index.html.
-let t0 = performance.now(), firstFrame = true, cooldown = false;
-let holdStart = 0, holdNeeded = 500, hands, cam;
+const hold = createHoldState();
+let startedAt = performance.now();
+let firstFrame = true, hands, cam;
+let disarmed = false, releaseSince = 0;
+const RELEASE_MS = 300, HOLD_MS = 600;
 
-function resize() { c.width = window.innerWidth; c.height = window.innerHeight }
-resize(); window.addEventListener('resize', resize);
-function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y) }
+function overlayOpen() {
+    return scene.classList.contains('show') || mShare.classList.contains('show');
+}
+function resize() { c.width = window.innerWidth; c.height = window.innerHeight; }
+function resetBadge(message) {
+    badge.textContent = message;
+    badge.classList.remove('on');
+}
+function captureOnce() {
+    if (disarmed || overlayOpen()) return false;
+    disarmed = true;
+    releaseSince = 0;
+    resetHold(hold);
+    resetBadge('♡ Đã chụp!');
+    capture();
+    return true;
+}
 
-function onResults(r) {
+// Manual and automatic capture share a latch, so the image cannot be
+// overwritten while the card or the sharing prompt is visible.
+export function captureManually() { captureOnce(); }
+
+function onResults(results) {
     if (firstFrame) {
         firstFrame = false;
-        let ms = ((performance.now() - t0) / 1000).toFixed(1);
+        const seconds = ((performance.now() - startedAt) / 1000).toFixed(1);
         loader.classList.add('hide');
-        setTimeout(() => loader.style.display = 'none', 900);
-        ldtxt.textContent = 'Sẵn sàng sau ' + ms + 's 🌸';
+        setTimeout(() => { loader.style.display = 'none'; }, 900);
+        ldtxt.textContent = 'Sẵn sàng sau ' + seconds + 's 🌸';
     }
+
     ctx.clearRect(0, 0, c.width, c.height);
-    let ml = r.multiHandLandmarks;
-    if (!ml || ml.length < 2) { badge.textContent = 'giơ cả hai tay lên'; badge.classList.remove('on'); return }
-    ml.forEach(lm => {
-        drawConnectors(ctx, lm, HAND_CONNECTIONS, { color: 'rgba(255,179,193,.5)', lineWidth: 1.5 });
-        drawLandmarks(ctx, lm, { color: 'rgba(255,77,109,.85)', lineWidth: 1, radius: 3 });
-    });
-    let a = ml[0], b = ml[1];
-    let dT = dist(a[4], b[4]), dI = dist(a[8], b[8]);
-    let dC1 = dist(a[4], b[8]), dC2 = dist(a[8], b[4]);
-    let det = dT < 0.10 && dI < 0.10 && dC1 > 0.05 && dC2 > 0.05;
-    let now = performance.now();
-    if (det) {
-        if (!holdStart) holdStart = now;
-        let pct = Math.min((now - holdStart) / holdNeeded, 1);
-        badge.textContent = pct < 1 ? `♡ ${Math.round(pct * 100)}%` : '♡ chụp!';
+    const landmarks = results.multiHandLandmarks || [];
+    for (const hand of landmarks) {
+        drawConnectors(ctx, hand, HAND_CONNECTIONS, {
+            color: 'rgba(255,179,193,.5)', lineWidth: 1.5
+        });
+        drawLandmarks(ctx, hand, {
+            color: 'rgba(255,77,109,.85)', lineWidth: 1, radius: 3
+        });
+    }
+
+    const now = performance.now();
+    const twoHands = landmarks.length === 2;
+    const aspect = v.videoWidth && v.videoHeight ?
+        v.videoWidth / v.videoHeight : 16 / 9;
+    const result = evaluateHeartPose(landmarks, aspect);
+
+    // A new photo requires physically releasing the previous heart.
+    if (disarmed) {
+        if (!result.matched) {
+            if (!releaseSince) releaseSince = now;
+            if (now - releaseSince >= RELEASE_MS) disarmed = false;
+        } else {
+            releaseSince = 0;
+        }
+    }
+    if (overlayOpen() || disarmed) {
+        resetHold(hold);
+        resetBadge('♡ Đã chụp!');
+        return;
+    }
+
+    const progress = stepHold(hold, result.matched, twoHands, now, HOLD_MS);
+    if (!twoHands) {
+        resetBadge('Giơ hai tay để tạo trái tim ♡');
+        return;
+    }
+    if (result.matched) {
+        badge.textContent = '♡ ' + Math.round(progress.progress * 100) + '%';
         badge.classList.add('on');
-        if (pct >= 1 && !cooldown) { cooldown = true; holdStart = 0; capture(); setTimeout(() => cooldown = false, 3000) }
+        if (progress.ready) captureOnce();
     } else {
-        holdStart = 0;
-        badge.textContent = dT < 0.10 ? 'khép ngón trỏ lại' : dI < 0.10 ? 'khép ngón cái lại' : 'ghép 2 tay thành hình ♡';
-        badge.classList.remove('on');
+        resetBadge(result.hint);
     }
 }
 
 export function startCamera() {
     resize();
     window.addEventListener('resize', resize);
-    hands = new Hands({ locateFile: f => `https://unpkg.com/@mediapipe/hands@0.4.1646424915/${f}` });
-    hands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.7, minTrackingConfidence: 0.5 });
+    hands = new Hands({
+        locateFile: file => 'https://unpkg.com/@mediapipe/hands@0.4.1646424915/' + file
+    });
+    hands.setOptions({
+        maxNumHands: 2,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.7,
+        minTrackingConfidence: 0.5
+    });
     hands.onResults(onResults);
-    cam = new Camera(v, { onFrame: async () => await hands.send({ image: v }), width: 1280, height: 720, facingMode: 'user' });
-    cam.start().catch(e => { ldtxt.textContent = 'Lỗi camera: ' + e.message });
+    cam = new Camera(v, {
+        onFrame: async () => {
+            if (document.hidden || v.readyState < 2) return;
+            await hands.send({ image: v });
+        },
+        width: 1280, height: 720, facingMode: 'user'
+    });
+    cam.start().catch(error => {
+        ldtxt.textContent = 'Lỗi camera: ' + error.message;
+    });
 }
