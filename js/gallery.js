@@ -15,6 +15,7 @@ let images = [];
 let viewing = 0;
 let touchStart = null;
 let messageTimer;
+let scrollScheduled = false;
 
 function status(text, temporary = false) {
     const el = $('message');
@@ -44,6 +45,7 @@ function openViewer(index) {
     if (!viewer.open) viewer.showModal();
 }
 function render() {
+    const previousScroll = track.scrollLeft;
     track.replaceChildren(add);
     // Keep the plus cell even for an empty album, just like the design reference.
     const fragment = document.createDocumentFragment();
@@ -71,6 +73,7 @@ function render() {
         fragment.append(placeholder);
     }
     track.append(fragment);
+    track.scrollLeft = previousScroll;
     $('count').textContent = images.length + ' tấm ảnh';
     requestAnimationFrame(updateArrows);
 }
@@ -78,7 +81,10 @@ async function refresh() {
     try {
         const photoList = await fetchPhotos();
         // Stable order prevents reshuffling after a new upload.
-        images = photoList;
+        // Keep recently uploaded images visible until the cached GitHub listing catches up.
+        const remote = new Set(photoList.map(entry => entry.id));
+        const pending = images.filter(entry => entry.optimistic && !remote.has(entry.id));
+        images = [...pending, ...photoList];
         render();
         status(images.length ? 'Chạm để xem ảnh · kéo ngang để khám phá.' : 'Chạm + để bắt đầu album.');
     } catch (error) {
@@ -98,7 +104,11 @@ uploadDialog.addEventListener('click', e => { if (e.target === uploadDialog) upl
 fileInput.addEventListener('change', () => {
     $('fileLabel').textContent = fileInput.files.length ? fileInput.files.length + ' ảnh được chọn' : 'Chạm để chọn ảnh';
 });
-track.addEventListener('scroll', () => requestAnimationFrame(updateArrows), { passive: true });
+track.addEventListener('scroll', () => {
+    if (scrollScheduled) return;
+    scrollScheduled = true;
+    requestAnimationFrame(() => { scrollScheduled = false; updateArrows(); });
+}, { passive: true });
 const step = () => {
     const css = getComputedStyle(track);
     return parseFloat(css.gridAutoColumns) + parseFloat(css.columnGap);
@@ -168,7 +178,7 @@ uploadForm.addEventListener('submit', async e => {
             const dataUrl = await optimize(files[i]);
             const savedPhoto = await uploadPhoto(dataUrl, key);
             // Add immediately: list API may be cached for a few seconds.
-            images.unshift({ id: savedPhoto.path, url: savedPhoto.url });
+            images.unshift({ id: savedPhoto.path, url: savedPhoto.url, optimistic: true });
             saved++;
             render();
         }
