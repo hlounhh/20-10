@@ -38,7 +38,7 @@ function layout() {
     syncPlaceholders();
 }
 
-function makeTile(entry) {
+function makeTile(entry, index) {
     const cell = document.createElement('button');
     cell.type = 'button';
     cell.className = 'tile photo';
@@ -51,11 +51,11 @@ function makeTile(entry) {
         const index = images.findIndex(item => item.id === entry.id);
         if (index !== -1) openViewer(index);
     });
-    updateTile(cell, entry);
+    updateTile(cell, entry, index);
     return cell;
 }
 
-function updateTile(cell, entry) {
+function updateTile(cell, entry, index) {
     const img = cell.firstElementChild;
     if (img.dataset.url !== entry.url) {
         img.classList.remove('loaded');
@@ -63,9 +63,9 @@ function updateTile(cell, entry) {
         img.src = entry.url;
         img.dataset.url = entry.url;
     }
-    img.alt = 'Khoảnh khắc ' + (images.indexOf(entry) + 1);
-    img.loading = images.indexOf(entry) < 12 ? 'eager' : 'lazy';
-    cell.setAttribute('aria-label', 'Xem ảnh ' + (images.indexOf(entry) + 1));
+    img.alt = 'Khoảnh khắc ' + (index + 1);
+    img.loading = index < 12 ? 'eager' : 'lazy';
+    cell.setAttribute('aria-label', 'Xem ảnh ' + (index + 1));
 }
 
 function syncPlaceholders() {
@@ -123,13 +123,13 @@ function applyPhotos(next) {
 
     if (prependOnly) {
         // Only insert new nodes, leaving decoded existing images in place.
-        const newNodes = next.slice(0, added).map(item => {
-            const node = makeTile(item);
+        const newNodes = next.slice(0, added).map((item, index) => {
+            const node = makeTile(item, index);
             tiles.set(item.id, node);
             return node;
         });
         track.prepend(...newNodes);
-        next.slice(added).forEach(item => updateTile(tiles.get(item.id), item));
+        next.slice(added).forEach((item, index) => updateTile(tiles.get(item.id), item, index + added));
     } else {
         // Reuse existing DOM/image elements also for removals and reordering.
         const fragment = document.createDocumentFragment();
@@ -140,13 +140,13 @@ function applyPhotos(next) {
                 tiles.delete(id);
             }
         }
-        for (const item of next) {
+        for (const [index, item] of next.entries()) {
             let node = tiles.get(item.id);
             if (!node) {
-                node = makeTile(item);
+                node = makeTile(item, index);
                 tiles.set(item.id, node);
             } else {
-                updateTile(node, item);
+                updateTile(node, item, index);
             }
             fragment.append(node);
         }
