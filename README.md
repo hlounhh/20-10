@@ -11,15 +11,15 @@ Website tĩnh gồm thiệp chúc mừng với nhận diện cử chỉ MediaPip
 
 ## Đưa ảnh vào thư viện
 
-**Người xem không thể upload ảnh.** API `/api/photos` chỉ cho phép `GET`, các yêu cầu `POST` sẽ trả **405**. Không cần `GITHUB_TOKEN` hoặc mật khẩu upload trên Vercel nữa.
+**Trang gallery không có nút thêm ảnh.** Chỉ sau khi người dùng chụp bằng camera, xem thiệp và nhấn **Cóooooo!** tại câu hỏi chia sẻ, frontend mới gửi ảnh qua `POST /api/photos`. Nút **Không** đóng hộp thoại, không gửi dữ liệu. API `GET /api/photos` vẫn tự động tải danh sách ảnh.
 
 Chủ repository thêm ảnh JPG/PNG/WebP qua giao diện GitHub bằng cách tải file vào thư mục `photos/` hoặc `photos/YYYY/MM/`. Ngay sau khi commit lên nhánh `main`, frontend đang mở sẽ tự kiểm tra ảnh mới **mỗi 10 giây** (chỉ khi tab đang hiển thị), không cần tải lại trang. API dùng cache tại edge 10 giây và có thể phục vụ bản cũ thêm 5 giây, nên cập nhật gần thời gian thực nhưng không bảo đảm tức thời. Frontend chỉ bổ sung/cập nhật ô thay đổi, giữ vị trí lướt, trì hoãn cập nhật trong lúc đang vuốt và giữ nguyên ảnh đang xem fullscreen.
 
-Repo là public nên ảnh cũng công khai và có thể được xem qua `raw.githubusercontent.com`; chỉ thêm ảnh khi có quyền sử dụng/chia sẻ. Nếu trước đây đã tạo `GITHUB_TOKEN` chỉ để upload ảnh qua website, hãy thu hồi token đó để giảm rủi ro. Không dùng GitHub Raw làm CDN ảnh quy mô lớn.
+Repo là public nên ảnh cũng công khai và có thể được xem qua `raw.githubusercontent.com`; chỉ thêm ảnh khi có quyền sử dụng/chia sẻ. **Để bật chia sẻ từ camera**, cần đặt `GITHUB_TOKEN` là fine-grained token có quyền **Contents: Read and write** cho riêng repo `hlounhh/20-10` trong **Vercel Environment Variables**, rồi redeploy. Token không được đưa vào frontend. Không yêu cầu mật khẩu người dùng. Không dùng GitHub Raw làm CDN ảnh quy mô lớn.
 
 ## Camera
 
-Vẫn chụp ảnh bằng camera/MediaPipe và hiện thiệp; sau đó có thể **tải ảnh về thiết bị**, không tải ảnh lên GitHub.
+Vẫn chụp ảnh bằng camera/MediaPipe và hiện thiệp. Sau khi người dùng chạm thiệp sẽ hiện câu hỏi **có muốn chia sẻ ảnh cho mọi người không?**: chọn **Không** thì ảnh không được gửi đi; chọn **Cóooooo!🌸** thì ảnh được tải lên GitHub và chuyển đến gallery. Nếu API lỗi, giữ hộp thoại cho phép thử lại.
 
 ## Chạy thử
 
@@ -31,4 +31,6 @@ Vẫn chụp ảnh bằng camera/MediaPipe và hiện thiệp; sau đó có th�
 
 - `js/gallery.js`: `REFRESH_MS = 10000`; đồng bộ ngay khi quay lại tab.
 - `api/photos.js`: edge cache `s-maxage=10, stale-while-revalidate=5` hạn chế request vào GitHub.
-- GitHub API ẩn danh có giới hạn lượt gọi; với lưu lượng cao nên dùng `GITHUB_TOKEN` **read-only** làm biến môi trường Vercel (không phải token upload) hoặc tăng khoảng polling/cache. API vẫn không hỗ trợ POST.
+- GitHub API ẩn danh có giới hạn lượt gọi; khi cần chia sẻ ảnh qua camera, đặt `GITHUB_TOKEN` **Contents: Read and write** ở Vercel. API hỗ trợ `POST` để lưu ảnh chỉ khi frontend gọi sau thao tác đồng ý. **Đây không phải cơ chế xác thực phía server**: người khác có thể tự gọi endpoint công khai. Kiểm tra Origin, giới hạn kích thước và định dạng giúp giảm một số rủi ro nhưng không chống spam. Hãy bật Vercel Firewall / rate limit cho POST trước khi chia sẻ rộng rãi.
+
+**Cảnh báo vận hành:** Mỗi ảnh upload tạo commit trong repo. Nếu token upload cũ đã được thu hồi, cần tạo token mới và redeploy Vercel. Không có token thì gallery vẫn xem được ảnh cũ, nhưng chia sẻ mới sẽ báo lỗi.
