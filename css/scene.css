@@ -102,7 +102,7 @@
             position: absolute;
             /* Move flower slightly inward so the wrapping paper stays visible,
                including on shorter desktop viewports. */
-            bottom: 3%;
+            bottom: 4.5%;
             right: 1.5%;
             width: 54.3%;
             height: 60%;
@@ -337,10 +337,11 @@
 
             /* Avoid hiding the enlarged card's text under the bouquet. */
             .bouquet {
-                width: 47%;
-                height: 51%;
-                right: 0;
-                bottom: -1%;
+                /* Slightly lower/right so enlarged paragraphs remain readable. */
+                width: 45%;
+                height: 49%;
+                right: -2%;
+                bottom: -2%;
             }
         }
 
@@ -350,4 +351,9 @@
                 width: min(96vw, 78dvh);
                 height: min(96vw, 78dvh);
             }
+        }
+
+        @media (max-width: 360px) and (min-height: 500px) {
+            .hcard { width: 82%; height: 106%; }
+            .body-text { font-size: 12.5px; line-height: 1.4; }
         }
