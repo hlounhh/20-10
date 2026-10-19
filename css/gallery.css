@@ -68,16 +68,113 @@ a { color: inherit; text-decoration: none; }
 @media(max-width:630px){:root{--gap:8px;--inset:8px}.tile{border-radius:15px}}
 @media(prefers-reduced-motion:reduce){.tile img{transition:none}}
 
-/* Viewer is hidden unless a user opens a photo. */
-dialog { color:var(--text); border:1px solid #494048; background:#222126; box-shadow:0 32px 130px #0009; }
-dialog::backdrop { background:rgba(8,7,11,.8); backdrop-filter:blur(8px); }
-.close { border:0; color:#fff; background:#39363b; border-radius:50%; width:34px; height:34px; font-size:25px; line-height:1; }
-.viewer { inset:0; width:100vw; max-width:none; height:100dvh; max-height:none; margin:0; padding:clamp(14px,3vw,26px); border:0; background:rgba(16,15,18,.97); overflow:hidden; }
-.viewer-top { display:flex; align-items:center; justify-content:space-between; height:40px; }
-.viewer-top span { color:#d4c8ce; font-size:12px; }
-.viewer-stage { height:calc(100% - 102px); display:flex; align-items:center; justify-content:center; gap:8px; touch-action:pan-y; }
-.viewer-stage img { min-width:0; max-width:calc(100% - 90px); max-height:100%; object-fit:contain; border-radius:10px; user-select:none; -webkit-user-drag:none; }
-.viewer-arrow { flex:0 0 38px; height:38px; border-radius:50%; border:1px solid #5e565c; background:#343036; color:#fff; }
-.viewer-bottom { display:flex; align-items:center; justify-content:space-between; gap:10px; color:#a69ca5; font-size:11px; min-height:52px; }
-.viewer-bottom a { color:#f9c0d1; }
-@media(max-width:630px){.viewer-stage img{max-width:calc(100% - 70px)}.viewer-arrow{flex-basis:28px;width:28px;height:32px}}
+/* Swipeable, edge-to-edge horizontal photo-card stack. */
+dialog.viewer {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  max-width: none;
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  overflow: hidden;
+  background: rgba(13, 12, 16, .98);
+  color: var(--text);
+}
+.viewer::backdrop { background: rgba(6, 5, 9, .82); }
+.viewer-close {
+  position: absolute;
+  z-index: 10;
+  top: max(14px, env(safe-area-inset-top, 0px));
+  right: max(14px, env(safe-area-inset-right, 0px));
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,.6);
+  border-radius: 50%;
+  background: rgba(43, 40, 47, .72);
+  color: #fff;
+  font-size: 25px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.viewer-close:focus-visible { outline: 2px solid #ffb9d6; outline-offset: 3px; }
+.viewer-rail {
+  --viewer-card-size: min(58vw, 72dvh, 540px);
+  position: relative;
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.viewer-rail::-webkit-scrollbar { display: none; }
+.viewer-rail.is-dragging { cursor: grabbing; scroll-snap-type: none; }
+.viewer-rail:focus-visible { outline: 2px solid #b87d9e; outline-offset: -2px; }
+.viewer-card {
+  position: relative;
+  isolation: isolate;
+  flex: 0 0 var(--viewer-card-size);
+  width: var(--viewer-card-size);
+  height: var(--viewer-card-size);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: clamp(16px, 2vw, 24px);
+  background: #242126;
+  box-shadow: 0 22px 65px rgba(0,0,0,.50);
+  scroll-snap-align: center;
+  scroll-snap-stop: normal;
+  transform: scale(.93);
+  opacity: .66;
+  transition: transform .24s ease, opacity .24s ease, border-color .24s ease;
+  will-change: transform;
+}
+/* Neighbouring cards actually overlap, creating a horizontal deck. */
+.viewer-card + .viewer-card { margin-left: clamp(-72px, -8vw, -28px); }
+.viewer-card.active {
+  z-index: 2;
+  opacity: 1;
+  border-color: rgba(255,255,255,.28);
+  transform: scale(1);
+}
+.viewer-card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+@media (max-width: 630px) {
+  .viewer-rail { --viewer-card-size: min(78vw, 63dvh, 420px); }
+  .viewer-card { border-radius: 18px; }
+  .viewer-close { width: 36px; height: 36px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .viewer-card { transition: none; will-change: auto; }
+}

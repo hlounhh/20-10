@@ -3,8 +3,7 @@ import { fetchPhotos } from './photos.js';
 const $ = id => document.getElementById(id);
 const track = $('track');
 const viewer = $('viewer');
-const stage = $('viewerStage');
-const fullImage = $('fullImage');
+const viewerRail = $('viewerRail');
 
 const REFRESH_MS = 10000;
 const SETTLE_MS = 220;
@@ -17,7 +16,17 @@ let minSlots = 0;
 let layoutWidth = 0;
 let layoutHeight = 0;
 let viewingId = null;
-let touchStart = null;
+let viewerCards = new Map();
+let viewerNodes = [];
+let activeViewerIndex = -1;
+let viewerScrollFrame = 0;
+let viewerDrag = null;
+let viewerPointerDown = false;
+let viewerNeedsSync = false;
+let viewerSyncTimer = 0;
+let viewerIgnoreClickUntil = 0;
+let gridMouseDrag = null;
+let gridIgnoreClickUntil = 0;
 let resizeFrame = 0;
 let refreshInFlight = false;
 let queuedList = null;
@@ -146,24 +155,134 @@ function syncPlaceholders() {
     }
 }
 
-function showImage(index) {
-    if (!images.length) return;
-    const item = images[(index + images.length) % images.length];
-    viewingId = item.id;
-    if (fullImage.getAttribute('src') !== item.url) fullImage.src = item.url;
-    $('originalLink').href = item.url;
-    $('viewerIndex').textContent = (images.indexOf(item) + 1) + ' / ' + images.length;
-    for (const neighbor of [images.indexOf(item) - 1, images.indexOf(item) + 1]) {
-        if (images[neighbor]) {
-            const preload = new Image();
-            preload.src = images[neighbor].url;
-        }
+// One real DOM card per photo: neighbouring pictures remain visible.
+// Images are lazy-loaded, card nodes are reused while GitHub sync runs.
+function makeViewerCard(item, index) {
+    const card = document.createElement('article');
+    card.className = 'viewer-card';
+    card.dataset.photoId = item.id;
+    card.setAttribute('role', 'group');
+    const img = document.createElement('img');
+    img.decoding = 'async';
+    img.draggable = false;
+    card.append(img);
+    updateViewerCard(card, item, index);
+    card.addEventListener('click', () => {
+        if (performance.now() < viewerIgnoreClickUntil) return;
+        viewingId = card.dataset.photoId;
+        centerViewerCard(viewingId, 'smooth');
+    });
+    return card;
+}
+
+function updateViewerCard(card, item, index) {
+    const img = card.firstElementChild;
+    if (img.dataset.url !== item.url) {
+        img.src = item.url;
+        img.dataset.url = item.url;
     }
+    img.alt = 'Ảnh ' + (index + 1);
+    img.loading = item.id === viewingId || index < 3 ? 'eager' : 'lazy';
+    card.setAttribute('aria-label', 'Ảnh ' + (index + 1) + ' trong ' + images.length);
+}
+
+function setViewerActive(index) {
+    if (!viewerNodes.length) return;
+    index = Math.max(0, Math.min(index, viewerNodes.length - 1));
+    if (activeViewerIndex !== index) {
+        if (viewerNodes[activeViewerIndex]) viewerNodes[activeViewerIndex].classList.remove('active');
+        viewerNodes[index].classList.add('active');
+        activeViewerIndex = index;
+    }
+    viewingId = viewerNodes[index].dataset.photoId;
+}
+
+function closestViewerIndex() {
+    if (!viewerNodes.length) return -1;
+    const first = viewerNodes[0];
+    const step = viewerNodes.length > 1
+        ? viewerNodes[1].offsetLeft - first.offsetLeft : first.offsetWidth;
+    const center = viewerRail.scrollLeft + viewerRail.clientWidth / 2;
+    const firstCenter = first.offsetLeft + first.offsetWidth / 2;
+    if (step <= 0) return 0;
+    return Math.max(0, Math.min(viewerNodes.length - 1,
+        Math.round((center - firstCenter) / step)));
+}
+
+function updateViewerSelection() {
+    if (viewer.open && viewerNodes.length) setViewerActive(closestViewerIndex());
+}
+
+function setViewerEdgePadding() {
+    const first = viewerNodes[0];
+    if (!first) return;
+    // Explicit px padding avoids unsupported calc(var()/2) in older Safari.
+    const pad = Math.max(12, (viewerRail.clientWidth - first.offsetWidth) / 2);
+    viewerRail.style.paddingLeft = pad + 'px';
+    viewerRail.style.paddingRight = pad + 'px';
+}
+
+function centerViewerCard(id, behavior = 'auto') {
+    const card = viewerCards.get(id);
+    if (!card || !viewer.open) return;
+    if (card.firstElementChild) card.firstElementChild.loading = 'eager';
+    const left = Math.max(0, card.offsetLeft -
+        (viewerRail.clientWidth - card.offsetWidth) / 2);
+    viewerRail.scrollTo({ left, behavior });
+    if (behavior === 'auto') updateViewerSelection();
+}
+
+function syncViewerCards() {
+    if (!viewer.open) return;
+    if (!images.length) { viewer.close(); return; }
+    const selected = viewerCards.has(viewingId) || images.some(p => p.id === viewingId)
+        ? viewingId : images[0].id;
+    const keep = new Set(images.map(p => p.id));
+    for (const [id, card] of viewerCards) {
+        if (!keep.has(id)) viewerCards.delete(id);
+    }
+    const fragment = document.createDocumentFragment();
+    viewerNodes = images.map((item, index) => {
+        let card = viewerCards.get(item.id);
+        if (!card) {
+            card = makeViewerCard(item, index);
+            viewerCards.set(item.id, card);
+        } else {
+            updateViewerCard(card, item, index);
+        }
+        card.classList.remove('active');
+        fragment.append(card);
+        return card;
+    });
+    viewerRail.replaceChildren(fragment);
+    activeViewerIndex = -1;
+    const index = images.findIndex(item => item.id === selected);
+    setViewerActive(Math.max(0, index));
+    // Calculate padding after the viewer has its actual measured viewport.
+    requestAnimationFrame(() => {
+        if (!viewer.open) return;
+        setViewerEdgePadding();
+        centerViewerCard(viewingId);
+    });
 }
 
 function openViewer(index) {
-    showImage(index);
-    if (!viewer.open) viewer.showModal();
+    if (!images[index]) return;
+    viewingId = images[index].id;
+    viewer.showModal();
+    syncViewerCards();
+}
+
+function flushViewerSync() {
+    if (!viewerNeedsSync || viewerPointerDown || viewerDrag) return;
+    viewerNeedsSync = false;
+    syncViewerCards();
+}
+function queueViewerSync() {
+    if (!viewer.open) return;
+    viewerNeedsSync = true;
+    clearTimeout(viewerSyncTimer);
+    viewerSyncTimer = setTimeout(flushViewerSync, 280);
 }
 
 function sameList(next) {
@@ -231,12 +350,8 @@ function applyPhotos(next) {
         }
     }
 
-    // Keep fullscreen viewer attached to its original image, not a shifting index.
-    if (viewer.open && viewingId) {
-        const index = images.findIndex(item => item.id === viewingId);
-        if (index >= 0) showImage(index);
-        else viewer.close();
-    }
+    // Keep the selected card during incremental sync, but don't interrupt a swipe.
+    if (viewer.open) queueViewerSync();
     $('message').textContent = images.length + ' ảnh trong thư viện, đã đồng bộ.';
 }
 
@@ -290,39 +405,157 @@ async function refresh() {
 }
 
 $('closeViewer').addEventListener('click', () => viewer.close());
-$('viewerPrev').addEventListener('click', () => {
-    const current = images.findIndex(item => item.id === viewingId);
-    if (current !== -1) showImage(current - 1);
+viewer.addEventListener('click', event => {
+    if (event.target === viewer) viewer.close();
 });
-$('viewerNext').addEventListener('click', () => {
-    const current = images.findIndex(item => item.id === viewingId);
-    if (current !== -1) showImage(current + 1);
+viewer.addEventListener('close', () => {
+    viewerNeedsSync = false;
+    viewerPointerDown = false;
+    viewerDrag = null;
+    clearTimeout(viewerSyncTimer);
+    viewerRail.classList.remove('is-dragging');
+    viewerRail.style.removeProperty('scroll-snap-type');
+    viewerRail.replaceChildren();
+    viewerCards.clear();
+    viewerNodes = [];
+    activeViewerIndex = -1;
 });
-viewer.addEventListener('click', e => { if (e.target === viewer) viewer.close(); });
-viewer.addEventListener('keydown', e => {
-    const current = images.findIndex(item => item.id === viewingId);
-    if (current === -1) return;
-    if (e.key === 'ArrowLeft') { e.preventDefault(); showImage(current - 1); }
-    if (e.key === 'ArrowRight') { e.preventDefault(); showImage(current + 1); }
+
+// Touch: native momentum scroll; desktop: mouse grabs the whole horizontal stack.
+viewerRail.addEventListener('pointerdown', event => {
+    viewerPointerDown = true;
+    if (event.pointerType !== 'mouse' || event.button !== 0) return;
+    viewerDrag = {
+        id: event.pointerId,
+        x: event.clientX,
+        left: viewerRail.scrollLeft,
+        moved: false
+    };
+    // Don't capture the pointer on mousedown: a normal click must still reach
+    // the card beneath it. Capture only once a real drag has started.
 });
-stage.addEventListener('pointerdown', e => {
-    if (e.pointerType === 'touch') touchStart = { x: e.clientX, y: e.clientY };
-}, { passive: true });
-stage.addEventListener('pointerup', e => {
-    if (!touchStart) return;
-    const dx = e.clientX - touchStart.x;
-    const dy = e.clientY - touchStart.y;
-    touchStart = null;
-    if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy)) {
-        const current = images.findIndex(item => item.id === viewingId);
-        if (current !== -1) showImage(current + (dx < 0 ? 1 : -1));
+viewerRail.addEventListener('pointermove', event => {
+    if (!viewerDrag || viewerDrag.id !== event.pointerId) return;
+    const dx = event.clientX - viewerDrag.x;
+    if (!viewerDrag.moved && Math.abs(dx) > 5) {
+        viewerDrag.moved = true;
+        viewerRail.classList.add('is-dragging');
+        viewerRail.style.scrollSnapType = 'none';
+        viewerRail.setPointerCapture(event.pointerId);
     }
+    if (viewerDrag.moved) {
+        viewerRail.scrollLeft = viewerDrag.left - dx;
+        event.preventDefault();
+    }
+});
+function endViewerPointer(event) {
+    viewerPointerDown = false;
+    if (viewerDrag && viewerDrag.id === event.pointerId) {
+        if (viewerDrag.moved) viewerIgnoreClickUntil = performance.now() + 300;
+        viewerDrag = null;
+        if (viewerRail.hasPointerCapture(event.pointerId)) {
+            viewerRail.releasePointerCapture(event.pointerId);
+        }
+        viewerRail.classList.remove('is-dragging');
+        viewerRail.style.removeProperty('scroll-snap-type');
+        updateViewerSelection();
+        if (viewingId) centerViewerCard(viewingId, 'smooth');
+    }
+    if (viewerNeedsSync) queueViewerSync();
+}
+viewerRail.addEventListener('pointerup', endViewerPointer);
+viewerRail.addEventListener('pointercancel', endViewerPointer);
+viewerRail.addEventListener('lostpointercapture', () => {
+    if (!viewerDrag) return;
+    viewerDrag = null;
+    viewerPointerDown = false;
+    viewerRail.classList.remove('is-dragging');
+    viewerRail.style.removeProperty('scroll-snap-type');
+    if (viewerNeedsSync) queueViewerSync();
+});
+viewerRail.addEventListener('click', event => {
+    if (performance.now() < viewerIgnoreClickUntil) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+}, true);
+viewerRail.addEventListener('scroll', () => {
+    if (!viewerScrollFrame) {
+        viewerScrollFrame = requestAnimationFrame(() => {
+            viewerScrollFrame = 0;
+            updateViewerSelection();
+        });
+    }
+    if (viewerNeedsSync) queueViewerSync();
 }, { passive: true });
-stage.addEventListener('pointercancel', () => { touchStart = null; });
+// A mouse wheel scrolls the cards as well as a trackpad's horizontal gesture.
+viewerRail.addEventListener('wheel', event => {
+    if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+        event.preventDefault();
+        viewerRail.scrollLeft += event.deltaY;
+    }
+}, { passive: false });
+viewerRail.addEventListener('keydown', event => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const index = Math.max(0, closestViewerIndex());
+    const next = event.key === 'Home' ? 0 :
+        event.key === 'End' ? images.length - 1 :
+        Math.max(0, Math.min(images.length - 1,
+            index + (event.key === 'ArrowRight' ? 1 : -1)));
+    setViewerActive(next);
+    centerViewerCard(viewingId, 'smooth');
+});
+// On desktop the grid itself can also be grabbed and dragged with a mouse.
+// Capture the resulting click to prevent accidentally opening a photo.
+track.addEventListener('pointerdown', event => {
+    if (event.pointerType !== 'mouse' || event.button !== 0) return;
+    gridMouseDrag = { id: event.pointerId, x: event.clientX, left: track.scrollLeft, moved: false };
+    // Delay pointer capture until the user actually drags across the grid.
+});
+track.addEventListener('pointermove', event => {
+    if (!gridMouseDrag || gridMouseDrag.id !== event.pointerId) return;
+    const dx = event.clientX - gridMouseDrag.x;
+    if (!gridMouseDrag.moved && Math.abs(dx) > 6) {
+        gridMouseDrag.moved = true;
+        track.style.scrollSnapType = 'none';
+        track.setPointerCapture(event.pointerId);
+    }
+    if (gridMouseDrag.moved) {
+        track.scrollLeft = gridMouseDrag.left - dx;
+        event.preventDefault();
+    }
+});
+function endGridDrag(event) {
+    if (!gridMouseDrag || gridMouseDrag.id !== event.pointerId) return;
+    if (gridMouseDrag.moved) gridIgnoreClickUntil = performance.now() + 350;
+    gridMouseDrag = null;
+    if (track.hasPointerCapture(event.pointerId)) track.releasePointerCapture(event.pointerId);
+    track.style.removeProperty('scroll-snap-type');
+}
+track.addEventListener('pointerup', endGridDrag);
+track.addEventListener('pointercancel', endGridDrag);
+track.addEventListener('lostpointercapture', () => {
+    gridMouseDrag = null;
+    track.style.removeProperty('scroll-snap-type');
+});
+track.addEventListener('click', event => {
+    if (performance.now() < gridIgnoreClickUntil) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+}, true);
 
 function requestLayout() {
     if (resizeFrame) return;
-    resizeFrame = requestAnimationFrame(() => { resizeFrame = 0; layout(); });
+    resizeFrame = requestAnimationFrame(() => {
+        resizeFrame = 0;
+        layout();
+        if (viewer.open && viewerNodes.length && !viewerPointerDown) {
+            setViewerEdgePadding();
+            centerViewerCard(viewingId);
+        }
+    });
 }
 window.addEventListener('resize', requestLayout, { passive: true });
 if (window.visualViewport) {
