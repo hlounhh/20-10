@@ -10,7 +10,7 @@
         rel="stylesheet">
     <!-- Styles kept in original cascade order. -->
     <link rel="stylesheet" href="./css/base.css">
-    <link rel="stylesheet" href="./css/camera.css">
+    <link rel="stylesheet" href="./css/camera.css?v=pose-countdown-16">
     <link rel="stylesheet" href="./css/scene.css?v=bouquet-right-13">
     <link rel="stylesheet" href="./css/share.css?v=gallery-pill-15">
 </head>
@@ -30,6 +30,11 @@
         <div id="status">
             <div id="badge">giơ tay lên nào</div>
             <a class="camera-gallery-link" href="./gallery.html">Kho ảnh ↗</a>
+        </div>
+        <!-- Small photobooth countdown; hidden until heart validation / manual shot. -->
+        <div id="pose-countdown" class="pose-countdown" role="status" aria-live="polite" aria-atomic="true" hidden>
+            <span id="pose-countdown-number" class="pose-countdown-number">5</span>
+            <span id="pose-countdown-message" class="pose-countdown-message">Tạo dáng xinh lên nàooo! 💗</span>
         </div>
         <button id="btn">✦ Chụp thủ công</button>
     </div>
@@ -127,7 +132,7 @@
     <script src="https://unpkg.com/@mediapipe/hands@0.4.1646424915/hands.js" crossorigin></script>
     <script src="https://unpkg.com/@mediapipe/camera_utils@0.3.1640029074/camera_utils.js" crossorigin></script>
     <script src="https://unpkg.com/@mediapipe/drawing_utils@0.3.1620248257/drawing_utils.js" crossorigin></script>
-    <script type="module" src="./js/main.js"></script>
+    <script type="module" src="./js/main.js?v=pose-countdown-16"></script>
 </body>
 
 </html>
