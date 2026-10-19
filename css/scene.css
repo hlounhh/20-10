@@ -100,10 +100,10 @@
 
         .bouquet {
             position: absolute;
-            /* Move flower slightly inward so the wrapping paper stays visible,
-               including on shorter desktop viewports. */
-            bottom: 4.5%;
-            right: 1.5%;
+            /* Desktop: move the bouquet into the free area to the right of
+               the card, and lift its wrapping tip clear of the viewport edge. */
+            bottom: 6%;
+            right: -14%;
             width: 54.3%;
             height: 60%;
             z-index: 15;
@@ -279,6 +279,11 @@
             color: #633f2b
         }
 
+
+        /* On narrower desktop/tablet widths there is less room beside the card. */
+        @media (min-width: 601px) and (max-width: 920px) {
+            .bouquet { right: -4%; }
+        }
 
         /* Mobile: a larger readable card without changing the desktop design.
            Keep the envelope entrance animation / card rotation intact. */
