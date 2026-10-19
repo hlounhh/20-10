@@ -14,6 +14,8 @@ let placeholders = [];
 let rows = 4;
 let columns = 8;
 let minSlots = 0;
+let layoutWidth = 0;
+let layoutHeight = 0;
 let viewingId = null;
 let touchStart = null;
 let resizeFrame = 0;
@@ -23,67 +25,75 @@ let pointerActive = false;
 let scrolling = false;
 let settleTimer = 0;
 
-// Fit BOTH axes. CSS distributes the viewport between complete columns/rows;
-// a small aspect-ratio adjustment keeps tiles as close to square as practical.
-function chooseGrid(width, height, gap, inset, preferred) {
+// The grid always has complete columns across the usable width and full-height
+// rows. Avoid CSS calc() divisions: older iOS Safari can fall back to auto widths,
+// causing very narrow, tall photo tiles with a blank right half of the screen.
+function chooseGrid(usableWidth, usableHeight, gap, preferred) {
     let best = null;
-    const maxRows = Math.min(18, Math.floor((height - 2 * inset + gap) / (72 + gap)));
-    const maxColumns = Math.min(24, Math.floor((width - 2 * inset + gap) / (72 + gap)));
+    const minTile = 72;
+    const maxRows = Math.min(18, Math.floor((usableHeight + gap) / (minTile + gap)));
+    const maxColumns = Math.min(24, Math.floor((usableWidth + gap) / (minTile + gap)));
 
     for (let r = 1; r <= maxRows; r++) {
-        const tileHeight = (height - 2 * inset - (r - 1) * gap) / r;
+        const tileHeight = (usableHeight - (r - 1) * gap) / r;
         for (let c = 1; c <= maxColumns; c++) {
-            const tileWidth = (width - 2 * inset - (c - 1) * gap) / c;
-            if (tileWidth < 72 || tileHeight < 72) continue;
+            const tileWidth = (usableWidth - (c - 1) * gap) / c;
+            if (tileWidth < minTile || tileHeight < minTile) continue;
             const aspectError = Math.abs(Math.log(tileWidth / tileHeight));
             const sizeError = Math.abs(Math.log(Math.sqrt(tileWidth * tileHeight) / preferred));
             const score = 2.3 * aspectError + .75 * sizeError +
-                (r === 1 && height > 330 ? .1 : 0);
-            if (!best || score < best.score) best = { rows: r, columns: c, score };
+                (r === 1 && usableHeight > 310 ? .1 : 0);
+            if (!best || score < best.score) {
+                best = { rows: r, columns: c, tileWidth, score };
+            }
         }
     }
-    return best || { rows: 1, columns: 1 };
+    return best || { rows: 1, columns: 1, tileWidth: Math.max(1, usableWidth) };
 }
 
-// CSS grid-auto-columns may return an unresolved calc(...) in some browsers.
-// Measuring an actual tile avoids NaN and preserves scroll when photos are added.
 function columnStep() {
-    const first = track.querySelector('.tile');
-    const style = getComputedStyle(track);
-    const gap = parseFloat(style.columnGap) || 0;
-    if (first) return first.getBoundingClientRect().width + gap;
-    const inset = parseFloat(style.paddingLeft) || 0;
-    return (track.clientWidth - 2 * inset - (columns - 1) * gap) / columns + gap;
+    const css = getComputedStyle(track);
+    const gap = parseFloat(css.columnGap) || 0;
+    const width = parseFloat(track.style.getPropertyValue('--tile-width')) || 120;
+    return width + gap;
 }
 
 function layout() {
-    const bounds = track.getBoundingClientRect();
-    const width = bounds.width;
-    const height = bounds.height;
-    if (width <= 0 || height <= 0) return;
+    const rect = track.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
 
-    const style = getComputedStyle(track);
-    const gap = parseFloat(style.columnGap) || 0;
-    const inset = parseFloat(style.paddingLeft) || 0;
-    const preferred = width <= 630 ? 118 : width < 1000 ? 142 : 156;
-    const grid = chooseGrid(width, height, gap, inset, preferred);
+    const css = getComputedStyle(track);
+    const gap = parseFloat(css.columnGap) || 0;
+    const padLeft = parseFloat(css.paddingLeft) || 0;
+    const padRight = parseFloat(css.paddingRight) || 0;
+    const padTop = parseFloat(css.paddingTop) || 0;
+    const padBottom = parseFloat(css.paddingBottom) || 0;
+    const usableWidth = Math.max(1, rect.width - padLeft - padRight);
+    const usableHeight = Math.max(1, rect.height - padTop - padBottom);
+    const preferred = rect.width <= 630 ? 118 : rect.width < 1000 ? 142 : 156;
+    const grid = chooseGrid(usableWidth, usableHeight, gap, preferred);
 
+    // Browser chrome can resize 100dvh without changing row/column counts.
+    // The pixel track width must still update on *every* actual resize.
     if (grid.rows === rows && grid.columns === columns &&
-        track.style.getPropertyValue('--rows')) return;
+        Math.abs(rect.width - layoutWidth) < .25 &&
+        Math.abs(rect.height - layoutHeight) < .25 &&
+        track.style.getPropertyValue('--tile-width')) return;
 
-    // Anchor the first visible image on rotation and mobile browser-bar resize.
-    const previousStep = columnStep();
-    const previousLeft = track.scrollLeft;
-    const firstIndex = previousStep > 0
-        ? Math.floor(previousLeft / previousStep) * rows : 0;
-    const anchorId = previousLeft > 2 ? images[firstIndex]?.id : null;
-    const anchorOffset = previousStep > 0 ? previousLeft % previousStep : 0;
+    const oldStep = columnStep();
+    const oldLeft = track.scrollLeft;
+    const firstColumn = oldStep > 0 ? Math.floor(oldLeft / oldStep) : 0;
+    const anchorId = oldLeft > 2 ? images[firstColumn * rows]?.id : null;
+    const anchorOffset = oldStep > 0 ? oldLeft - firstColumn * oldStep : 0;
 
     rows = grid.rows;
     columns = grid.columns;
     minSlots = rows * columns;
+    layoutWidth = rect.width;
+    layoutHeight = rect.height;
     track.style.setProperty('--rows', String(rows));
     track.style.setProperty('--columns', String(columns));
+    track.style.setProperty('--tile-width', grid.tileWidth.toFixed(4) + 'px');
     syncPlaceholders();
 
     if (anchorId) {
