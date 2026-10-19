@@ -5,7 +5,7 @@ Website tĩnh gồm thiệp chúc mừng với nhận diện cử chỉ MediaPip
 ## Trang kho ảnh `/gallery.html`
 
 - Chỉ có lưới ảnh vuông nền tối **phủ toàn bộ khung nhìn**, không thanh công cụ hay ô dấu +.
-- Tự tính số hàng theo chiều cao màn hình và số ô trống tối thiểu để che kín chiều ngang; không còn khoảng trống lớn dưới hai hàng ảnh.
+- Tự tính **cả số hàng và số cột** theo chiều rộng và cao vùng hiển thị; CSS co giãn các ô gần vuông để phủ đúng khung nhìn, không hở khoảng bên dưới hoặc cắt dở cột cuối trên iPhone. Có đủ ô trống khi thư viện chưa có ảnh; cập nhật khi xoay màn hình và khi thanh trình duyệt mobile thay đổi chiều cao.
 - Cuộn ngang bằng cơ chế native của trình duyệt (`overflow-x: auto`, quán tính trên iOS), không có JS theo dõi cuộn. Chạm ảnh để xem lớn, vuốt trái/phải khi xem.
 - File chính: `gallery.html`, `css/gallery.css`, `js/gallery.js`, `js/photos.js`.
 

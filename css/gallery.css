@@ -1,15 +1,15 @@
-/* Full-viewport, read-only horizontal image grid. No upload controls. */
+/* Device-fitted horizontal grid: no clipped columns or empty bottom area. */
 :root {
   color-scheme: dark;
   --bg: #1c1c1e;
   --tile: #29292c;
   --text: #f4f1ee;
   --gap: 10px;
-  --inset-top: 11px;
-  --inset-bottom: 11px;
-  --inset-x: 1px;
+  --inset: 10px;
   --rows: 4;
-  --size: calc((100dvh - var(--inset-top) - var(--inset-bottom) - (var(--rows) - 1) * var(--gap)) / var(--rows));
+  --columns: 8;
+  /* Both axes split the whole viewport into complete rows and columns. */
+  --column-width: calc((100% - (var(--columns) - 1) * var(--gap)) / var(--columns));
 }
 * { box-sizing: border-box; }
 html, body { width: 100%; height: 100%; margin: 0; background: var(--bg); }
@@ -17,16 +17,16 @@ body { color: var(--text); font-family: system-ui,-apple-system,"Segoe UI",sans-
 button, input { font: inherit; }
 button { cursor: pointer; }
 a { color: inherit; text-decoration: none; }
-.album { width: 100%; height: 100dvh; margin: 0; padding: 0; overflow: hidden; }
+.album { width: 100%; height: 100vh; height: 100dvh; margin: 0; padding: 0; overflow: hidden; }
 .track {
   display: grid;
   grid-auto-flow: column;
-  grid-template-rows: repeat(var(--rows), var(--size));
-  grid-auto-columns: var(--size);
+  grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
+  grid-auto-columns: var(--column-width);
   gap: var(--gap);
   width: 100%;
   height: 100%;
-  padding: var(--inset-top) var(--inset-x) var(--inset-bottom);
+  padding: var(--inset);
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
@@ -46,8 +46,10 @@ a { color: inherit; text-decoration: none; }
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  width: var(--size);
-  height: var(--size);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
   margin: 0;
   padding: 0;
   border: 0;
@@ -60,7 +62,7 @@ a { color: inherit; text-decoration: none; }
 .tile img.loaded { opacity: 1; }
 .placeholder { pointer-events: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-@media(max-width:630px){:root{--gap:8px;--inset-top:8px;--inset-bottom:8px}.tile{border-radius:15px}}
+@media(max-width:630px){:root{--gap:8px;--inset:8px}.tile{border-radius:15px}}
 @media(prefers-reduced-motion:reduce){.tile img{transition:none}}
 
 /* Viewer is hidden unless a user opens a photo. */

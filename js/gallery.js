@@ -12,6 +12,7 @@ let images = [];
 let tiles = new Map();
 let placeholders = [];
 let rows = 4;
+let columns = 8;
 let minSlots = 0;
 let viewingId = null;
 let touchStart = null;
@@ -22,20 +23,75 @@ let pointerActive = false;
 let scrolling = false;
 let settleTimer = 0;
 
-// Keep tiles square and fill the viewport; calculate only on resize.
+// Fit BOTH axes. CSS distributes the viewport between complete columns/rows;
+// a small aspect-ratio adjustment keeps tiles as close to square as practical.
+function chooseGrid(width, height, gap, inset, preferred) {
+    let best = null;
+    const maxRows = Math.min(18, Math.floor((height - 2 * inset + gap) / (72 + gap)));
+    const maxColumns = Math.min(24, Math.floor((width - 2 * inset + gap) / (72 + gap)));
+
+    for (let r = 1; r <= maxRows; r++) {
+        const tileHeight = (height - 2 * inset - (r - 1) * gap) / r;
+        for (let c = 1; c <= maxColumns; c++) {
+            const tileWidth = (width - 2 * inset - (c - 1) * gap) / c;
+            if (tileWidth < 72 || tileHeight < 72) continue;
+            const aspectError = Math.abs(Math.log(tileWidth / tileHeight));
+            const sizeError = Math.abs(Math.log(Math.sqrt(tileWidth * tileHeight) / preferred));
+            const score = 2.3 * aspectError + .75 * sizeError +
+                (r === 1 && height > 330 ? .1 : 0);
+            if (!best || score < best.score) best = { rows: r, columns: c, score };
+        }
+    }
+    return best || { rows: 1, columns: 1 };
+}
+
+// CSS grid-auto-columns may return an unresolved calc(...) in some browsers.
+// Measuring an actual tile avoids NaN and preserves scroll when photos are added.
+function columnStep() {
+    const first = track.querySelector('.tile');
+    const style = getComputedStyle(track);
+    const gap = parseFloat(style.columnGap) || 0;
+    if (first) return first.getBoundingClientRect().width + gap;
+    const inset = parseFloat(style.paddingLeft) || 0;
+    return (track.clientWidth - 2 * inset - (columns - 1) * gap) / columns + gap;
+}
+
 function layout() {
-    const mobile = window.innerWidth <= 630;
-    const gap = mobile ? 8 : 10;
-    const inset = mobile ? 8 : 11;
-    const ideal = mobile ? 118 : 148;
-    const h = track.clientHeight;
-    const w = track.clientWidth;
-    rows = Math.max(1, Math.floor((h - 2 * inset + gap) / (ideal + gap)));
-    const size = (h - 2 * inset - (rows - 1) * gap) / rows;
-    const columns = Math.max(1, Math.ceil((w - 2 + gap) / (size + gap)));
+    const bounds = track.getBoundingClientRect();
+    const width = bounds.width;
+    const height = bounds.height;
+    if (width <= 0 || height <= 0) return;
+
+    const style = getComputedStyle(track);
+    const gap = parseFloat(style.columnGap) || 0;
+    const inset = parseFloat(style.paddingLeft) || 0;
+    const preferred = width <= 630 ? 118 : width < 1000 ? 142 : 156;
+    const grid = chooseGrid(width, height, gap, inset, preferred);
+
+    if (grid.rows === rows && grid.columns === columns &&
+        track.style.getPropertyValue('--rows')) return;
+
+    // Anchor the first visible image on rotation and mobile browser-bar resize.
+    const previousStep = columnStep();
+    const previousLeft = track.scrollLeft;
+    const firstIndex = previousStep > 0
+        ? Math.floor(previousLeft / previousStep) * rows : 0;
+    const anchorId = previousLeft > 2 ? images[firstIndex]?.id : null;
+    const anchorOffset = previousStep > 0 ? previousLeft % previousStep : 0;
+
+    rows = grid.rows;
+    columns = grid.columns;
     minSlots = rows * columns;
     track.style.setProperty('--rows', String(rows));
+    track.style.setProperty('--columns', String(columns));
     syncPlaceholders();
+
+    if (anchorId) {
+        const index = images.findIndex(photo => photo.id === anchorId);
+        if (index >= 0) {
+            track.scrollLeft = Math.floor(index / rows) * columnStep() + anchorOffset;
+        }
+    }
 }
 
 function makeTile(entry, index) {
@@ -110,8 +166,7 @@ function applyPhotos(next) {
 
     // Preserve the first visible column when already scrolled away from the start.
     const oldLeft = track.scrollLeft;
-    const step = parseFloat(getComputedStyle(track).gridAutoColumns) +
-        parseFloat(getComputedStyle(track).columnGap);
+    const step = columnStep();
     const firstColumn = step > 0 ? Math.floor(oldLeft / step) : 0;
     const anchorId = oldLeft > 2 ? images[firstColumn * rows]?.id : null;
     const offset = anchorId ? oldLeft - firstColumn * step : 0;
@@ -255,10 +310,18 @@ stage.addEventListener('pointerup', e => {
 }, { passive: true });
 stage.addEventListener('pointercancel', () => { touchStart = null; });
 
-window.addEventListener('resize', () => {
+function requestLayout() {
     if (resizeFrame) return;
     resizeFrame = requestAnimationFrame(() => { resizeFrame = 0; layout(); });
-}, { passive: true });
+}
+window.addEventListener('resize', requestLayout, { passive: true });
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', requestLayout, { passive: true });
+}
+if (typeof ResizeObserver !== 'undefined') {
+    const observer = new ResizeObserver(requestLayout);
+    observer.observe(track);
+}
 
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden) refresh();
