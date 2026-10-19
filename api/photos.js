@@ -1,7 +1,8 @@
 'use strict';
 // First-party GitHub Contents storage for a small PUBLIC photo gallery.
-// Requires GITHUB_TOKEN (fine-grained Contents: read/write) and GALLERY_UPLOAD_KEY
-// as Vercel server-side environment variables; neither is shipped to the client.
+// Requires GITHUB_TOKEN (fine-grained Contents: read/write) as a server-side
+// Vercel environment variable. Uploads are intentionally public: configure
+// Vercel Firewall/rate limits to reduce abuse before sharing the site.
 const crypto = require('node:crypto');
 
 const REPO = process.env.GITHUB_REPOSITORY || 'hlounhh/20-10';
@@ -49,11 +50,6 @@ async function github(path, opts = {}) {
     }
     return data;
 }
-function constantTimeEqual(input, expected) {
-    const a = crypto.createHash('sha256').update(input).digest();
-    const b = crypto.createHash('sha256').update(expected).digest();
-    return crypto.timingSafeEqual(a, b);
-}
 function decodeImage(dataUrl) {
     if (typeof dataUrl !== 'string' || dataUrl.length > MAX_BODY_CHARS) return null;
     const match = /^data:(image\/(?:jpeg|png|webp));base64,([a-zA-Z0-9+/]+={0,2})$/.exec(dataUrl);
@@ -96,17 +92,13 @@ module.exports = async function handler(req, res) {
             res.setHeader('Cache-Control','public, s-maxage=12, stale-while-revalidate=45');
             return send(res,200,{ images });
         }
-        if (!process.env.GITHUB_TOKEN || !process.env.GALLERY_UPLOAD_KEY) {
-            return send(res,503,{error:'Máy chủ chưa được cấu hình GitHub token và mã tải ảnh.'});
+        if (!process.env.GITHUB_TOKEN) {
+            return send(res,503,{error:'Máy chủ chưa được cấu hình GITHUB_TOKEN.'});
         }
         const contentType = String(req.headers['content-type'] || '').split(';')[0];
         if (contentType !== 'application/json') return send(res,415,{error:'Yêu cầu phải ở dạng JSON.'});
         const length = Number(req.headers['content-length'] || 0);
         if (length > MAX_BODY_CHARS + 1000) return send(res,413,{error:'Ảnh quá lớn.'});
-        const password = req.headers['x-upload-key'];
-        if (typeof password !== 'string' || !constantTimeEqual(password, process.env.GALLERY_UPLOAD_KEY)) {
-            return send(res,401,{error:'Mã tải ảnh không đúng.'});
-        }
         let body;
         try { body = await readBody(req); } catch { return send(res,400,{error:'Dữ liệu ảnh không hợp lệ.'}); }
         const image = decodeImage(body && body.dataUrl);

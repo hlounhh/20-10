@@ -1,12 +1,12 @@
 // Shared client for the first-party Vercel /api/photos endpoint.
-// Never put a GitHub token or server-side upload secret in this file.
-export async function uploadPhoto(dataUrl, uploadKey) {
+// Never put a GitHub token in this file. Uploads are public; guard the API at the hosting layer.
+export async function uploadPhoto(dataUrl) {
     if (typeof dataUrl !== 'string' || !/^data:image\/(jpeg|png|webp);base64,/.test(dataUrl)) {
         throw new Error('Ảnh không hợp lệ.');
     }
     const response = await fetch('/api/photos', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-upload-key': uploadKey },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dataUrl })
     });
     let result;

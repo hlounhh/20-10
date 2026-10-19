@@ -2,26 +2,17 @@ import { mShare } from './elements.js';
 import { lastUrl } from './capture.js';
 import { uploadPhoto } from './upload.js';
 
-const keyInput = document.getElementById('share-upload-key');
 const yesBtn = document.getElementById('sbtn-yes');
 
 function closeShare() { mShare.classList.remove('show'); }
 
 async function saveImg() {
-    const key = keyInput.value.trim();
-    if (!key) {
-        keyInput.focus();
-        keyInput.setCustomValidity('Cần có mã tải ảnh lên.');
-        keyInput.reportValidity();
-        return;
-    }
-    keyInput.setCustomValidity('');
+    if (yesBtn.disabled) return;
     yesBtn.textContent = 'Đang gửi...';
     yesBtn.disabled = true;
     try {
         if (!lastUrl) throw new Error('Chưa có ảnh để gửi.');
-        await uploadPhoto(lastUrl, key);
-        keyInput.value = '';
+        await uploadPhoto(lastUrl);
         closeShare();
         window.location.assign('./gallery.html');
     } catch (error) {
@@ -31,5 +22,5 @@ async function saveImg() {
         yesBtn.disabled = false;
     }
 }
-keyInput.addEventListener('input', () => keyInput.setCustomValidity(''));
+
 export { closeShare, saveImg };
