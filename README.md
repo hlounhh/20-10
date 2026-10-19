@@ -7,7 +7,7 @@ Website tĩnh gồm thiệp chúc mừng với nhận diện cử chỉ MediaPip
 - Chỉ có lưới ảnh vuông nền tối **phủ toàn bộ khung nhìn**, không thanh công cụ hay ô dấu +.
 - Tự tính **cả số hàng và số cột** theo chiều rộng/cao vùng hiển thị. JS truyền **chiều rộng cột bằng pixel** vào CSS thay vì phép `calc()/var()` không tương thích trên một số bản Safari iOS, tránh lỗi ô ảnh bị bó hẹp vào nửa trái màn hình. Hỗ trợ vùng an toàn iPhone khi xoay ngang, giữ nguyên 100dvh và tính lại khi thanh trình duyệt thay đổi kích thước (kể cả khi số hàng/cột không đổi). Lưới luôn chia hết chiều rộng và chiều cao, không lộ cột bị cắt khi đủ ảnh để lấp khung nhìn.
 - Trang lưới giữ cuộn ngang native trên iOS/Android; kéo-thả chuột PC cũng được.
-- Chạm vào ảnh sẽ mở **một dải card ảnh xếp ngang** (không còn viewer chỉ một ảnh): card giữa lớn/rõ, card bên cạnh nhìn thấy được, card tự căn giữa khi vuốt/kéo. **Không có mũi tên, số đếm, link ảnh gốc hoặc văn bản hướng dẫn** trong viewer; chỉ giữ nút đóng.
+- Chạm vào ảnh sẽ mở **một dải card ảnh xếp ngang** (không còn viewer chỉ một ảnh): card giữa lớn/rõ và nằm trên, các card kế bên chồng nhẹ lên nhau, card tự căn giữa khi vuốt/kéo. **Không có mũi tên, số đếm, link ảnh gốc hoặc văn bản hướng dẫn** trong viewer; chỉ giữ nút đóng.
 - Viewer dùng `scroll-snap`, cuộn cảm ứng/quán tính native, mouse pointer drag PC, bánh xe/trackpad và phím mũi tên; khi có ảnh mới sẽ giữ ảnh đang xem và trì hoãn đồng bộ để tránh ngắt vuốt.
 - File chính: `gallery.html`, `css/gallery.css`, `js/gallery.js`, `js/photos.js`.
 
