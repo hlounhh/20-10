@@ -4,35 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#1c1c1e">
-  <meta name="description" content="Kho ảnh 20-10: những khoảnh khắc của chúng mình.">
+  <meta name="description" content="Kho ảnh 20-10">
   <title>Kho ảnh · 20-10</title>
   <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
   <link rel="stylesheet" href="./css/gallery.css">
 </head>
 <body>
-  <!-- Minimalist, full-width two-row photo strip. Only the tiles are visible. -->
   <main class="album" aria-label="Kho ảnh">
-    <div id="track" class="track" tabindex="0" aria-label="Lưới ảnh, vuốt ngang để xem">
-      <button id="add" class="tile add" type="button" aria-label="Thêm ảnh" title="Thêm ảnh">
-        <span class="plus" aria-hidden="true">+</span>
-        <span class="add-caption">Thêm ảnh</span>
-      </button>
-    </div>
+    <div id="track" class="track" tabindex="0" aria-label="Lưới ảnh toàn màn hình, vuốt ngang để xem"></div>
   </main>
   <p id="message" class="sr-only" role="status" aria-live="polite"></p>
-
-  <dialog id="uploadDialog" class="upload-dialog" aria-labelledby="uploadTitle">
-    <form id="uploadForm">
-      <div class="dialog-top"><span class="eyebrow">NEW MEMORIES</span><button class="close" id="closeUpload" type="button" aria-label="Đóng">×</button></div>
-      <h2 id="uploadTitle">Thêm khoảnh khắc <span>♡</span></h2>
-      <p>Chọn ảnh từ điện thoại hoặc máy tính. Ảnh sẽ được tối ưu trước khi lưu.</p>
-      <label class="filepick" for="photoFiles"><span class="file-icon">＋</span><strong id="fileLabel">Chạm để chọn ảnh</strong><small>Chọn tối đa 10 ảnh mỗi lần · JPG, PNG, WebP, HEIC (nếu thiết bị hỗ trợ)</small></label>
-      <input id="photoFiles" type="file" accept="image/*" multiple hidden>
-      <p class="privacy">Lưu ý: Ảnh sẽ xuất hiện công khai trong GitHub và trong album. Đừng tải lên ảnh riêng tư hoặc ảnh của người khác khi chưa được đồng ý.</p>
-      <button id="uploadSubmit" class="primary" type="submit">Lưu vào album ↗</button>
-      <div id="uploadStatus" class="upload-status" role="status" aria-live="polite"></div>
-    </form>
-  </dialog>
 
   <dialog id="viewer" class="viewer" aria-label="Xem ảnh">
     <div class="viewer-top"><span id="viewerIndex"></span><button class="close" id="closeViewer" type="button" aria-label="Đóng ảnh">×</button></div>

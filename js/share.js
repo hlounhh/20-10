@@ -1,26 +1,18 @@
 import { mShare } from './elements.js';
 import { lastUrl } from './capture.js';
-import { uploadPhoto } from './upload.js';
 
-const yesBtn = document.getElementById('sbtn-yes');
-
+const saveButton = document.getElementById('sbtn-yes');
 function closeShare() { mShare.classList.remove('show'); }
 
-async function saveImg() {
-    if (yesBtn.disabled) return;
-    yesBtn.textContent = 'Đang gửi...';
-    yesBtn.disabled = true;
-    try {
-        if (!lastUrl) throw new Error('Chưa có ảnh để gửi.');
-        await uploadPhoto(lastUrl);
-        closeShare();
-        window.location.assign('./gallery.html');
-    } catch (error) {
-        alert('Không thể gửi ảnh: ' + error.message);
-    } finally {
-        yesBtn.textContent = 'Cóooooo!🌸';
-        yesBtn.disabled = false;
-    }
+// Keep the camera experience useful without uploading visitor photos to GitHub.
+function saveImg() {
+    if (!lastUrl) { alert('Chưa có ảnh để lưu.'); return; }
+    const download = document.createElement('a');
+    download.href = lastUrl;
+    download.download = '20-10-' + Date.now() + '.jpg';
+    document.body.appendChild(download);
+    download.click();
+    download.remove();
+    closeShare();
 }
-
 export { closeShare, saveImg };
