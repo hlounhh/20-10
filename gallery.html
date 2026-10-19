@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#141416">
+  <meta name="description" content="Kho ảnh 20-10: những khoảnh khắc của chúng mình.">
+  <title>Kho ảnh · 20-10</title>
+  <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
+  <link rel="stylesheet" href="./css/gallery.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="heading">
+      <div>
+        <div class="eyebrow"><span class="dot"></span> 20 · 10 / MEMORY LANE</div>
+        <h1>Những <em>khoảnh khắc.</em></h1>
+        <p class="subhead">Một chiếc album nhỏ cho những điều đáng nhớ.</p>
+      </div>
+      <a class="back" href="./index.html">← Về thiệp</a>
+    </header>
+
+    <section class="album" aria-label="Album ảnh vuốt ngang">
+      <div class="album-top">
+        <div class="album-info"><span class="tag">ALBUM 01</span><span id="count">Đang tải ảnh…</span></div>
+        <div class="album-controls">
+          <span class="hint">Vuốt sang ngang để xem <span aria-hidden="true">→</span></span>
+          <button id="prev" class="arrow" aria-label="Lùi một cột ảnh" type="button">←</button>
+          <button id="next" class="arrow" aria-label="Tiến một cột ảnh" type="button">→</button>
+        </div>
+      </div>
+      <div id="track" class="track" tabindex="0" aria-label="Danh sách ảnh có thể vuốt ngang">
+        <button id="add" class="tile add" type="button" aria-label="Thêm ảnh" title="Thêm ảnh">
+          <span class="plus">+</span><span class="add-caption">Thêm ảnh</span>
+        </button>
+      </div>
+      <div class="album-bottom"><span id="message" aria-live="polite">Chạm + để thêm ảnh của bạn.</span><span>SWIPE • SAVE • REMEMBER</span></div>
+    </section>
+
+    <footer>20-10 • Một góc lưu giữ yêu thương <span>♡</span></footer>
+  </main>
+
+  <dialog id="uploadDialog" class="upload-dialog" aria-labelledby="uploadTitle">
+    <form id="uploadForm">
+      <div class="dialog-top"><span class="eyebrow">NEW MEMORIES</span><button class="close" id="closeUpload" type="button" aria-label="Đóng">×</button></div>
+      <h2 id="uploadTitle">Thêm khoảnh khắc <span>♡</span></h2>
+      <p>Chọn ảnh từ điện thoại hoặc máy tính. Ảnh sẽ được tối ưu trước khi lưu.</p>
+      <label class="filepick" for="photoFiles"><span class="file-icon">＋</span><strong id="fileLabel">Chạm để chọn ảnh</strong><small>Chọn tối đa 10 ảnh mỗi lần · JPG, PNG, WebP</small></label>
+      <input id="photoFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple required hidden>
+      <label class="input-label" for="uploadKey">Mã tải ảnh lên</label>
+      <input id="uploadKey" type="password" autocomplete="off" maxlength="160" placeholder="Mã do chủ album cung cấp" required>
+      <p class="privacy">Lưu ý: Ảnh sẽ xuất hiện công khai trong GitHub và trong album. Đừng tải lên ảnh riêng tư hoặc ảnh của người khác khi chưa được đồng ý.</p>
+      <button id="uploadSubmit" class="primary" type="submit">Lưu vào album ↗</button>
+      <div id="uploadStatus" class="upload-status" role="status" aria-live="polite"></div>
+    </form>
+  </dialog>
+
+  <dialog id="viewer" class="viewer" aria-label="Xem ảnh">
+    <div class="viewer-top"><span id="viewerIndex"></span><button class="close" id="closeViewer" type="button" aria-label="Đóng ảnh">×</button></div>
+    <div id="viewerStage" class="viewer-stage">
+      <button id="viewerPrev" class="viewer-arrow" type="button" aria-label="Ảnh trước">←</button>
+      <img id="fullImage" alt="Ảnh đã lưu">
+      <button id="viewerNext" class="viewer-arrow" type="button" aria-label="Ảnh tiếp">→</button>
+    </div>
+    <div class="viewer-bottom"><a id="originalLink" target="_blank" rel="noopener noreferrer">Mở ảnh gốc ↗</a><span>Vuốt trái / phải để chuyển ảnh</span></div>
+  </dialog>
+  <script type="module" src="./js/gallery.js"></script>
+</body>
+</html>
