@@ -431,14 +431,18 @@ viewerRail.addEventListener('pointerdown', event => {
         left: viewerRail.scrollLeft,
         moved: false
     };
-    viewerRail.classList.add('is-dragging');
-    viewerRail.style.scrollSnapType = 'none';
-    viewerRail.setPointerCapture(event.pointerId);
+    // Don't capture the pointer on mousedown: a normal click must still reach
+    // the card beneath it. Capture only once a real drag has started.
 });
 viewerRail.addEventListener('pointermove', event => {
     if (!viewerDrag || viewerDrag.id !== event.pointerId) return;
     const dx = event.clientX - viewerDrag.x;
-    if (Math.abs(dx) > 5) viewerDrag.moved = true;
+    if (!viewerDrag.moved && Math.abs(dx) > 5) {
+        viewerDrag.moved = true;
+        viewerRail.classList.add('is-dragging');
+        viewerRail.style.scrollSnapType = 'none';
+        viewerRail.setPointerCapture(event.pointerId);
+    }
     if (viewerDrag.moved) {
         viewerRail.scrollLeft = viewerDrag.left - dx;
         event.preventDefault();
@@ -507,14 +511,20 @@ viewerRail.addEventListener('keydown', event => {
 track.addEventListener('pointerdown', event => {
     if (event.pointerType !== 'mouse' || event.button !== 0) return;
     gridMouseDrag = { id: event.pointerId, x: event.clientX, left: track.scrollLeft, moved: false };
-    track.style.scrollSnapType = 'none';
-    track.setPointerCapture(event.pointerId);
+    // Delay pointer capture until the user actually drags across the grid.
 });
 track.addEventListener('pointermove', event => {
     if (!gridMouseDrag || gridMouseDrag.id !== event.pointerId) return;
     const dx = event.clientX - gridMouseDrag.x;
-    if (Math.abs(dx) > 6) gridMouseDrag.moved = true;
-    if (gridMouseDrag.moved) { track.scrollLeft = gridMouseDrag.left - dx; event.preventDefault(); }
+    if (!gridMouseDrag.moved && Math.abs(dx) > 6) {
+        gridMouseDrag.moved = true;
+        track.style.scrollSnapType = 'none';
+        track.setPointerCapture(event.pointerId);
+    }
+    if (gridMouseDrag.moved) {
+        track.scrollLeft = gridMouseDrag.left - dx;
+        event.preventDefault();
+    }
 });
 function endGridDrag(event) {
     if (!gridMouseDrag || gridMouseDrag.id !== event.pointerId) return;
