@@ -3,13 +3,33 @@
 // GITHUB_TOKEN (Contents read/write for this repo) MUST stay in Vercel env.
 // This is a public endpoint, NOT an authenticated upload service: configure
 // Vercel Firewall rate limits before sharing widely.
-const crypto = require('node:crypto');
 
 const REPO = process.env.GITHUB_REPOSITORY || 'hlounhh/20-10';
 const BRANCH = process.env.GITHUB_BRANCH || 'main';
 const ROOT = 'photos/';
 const MAX_BYTES = 2_350_000;
 const MAX_BODY = 3_250_000;
+
+// Strict minute-only filenames in Vietnamese local time. The GitHub Contents
+// API refuses to create an existing path without sha, so uploads never overwrite.
+function photoMinuteName(date = new Date()) {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+    }).formatToParts(date);
+    const p = Object.fromEntries(parts.map(x => [x.type, x.value]));
+    return p.year + '-' + p.month + '-' + p.day + '_' + p.hour + '-' + p.minute;
+}
+function photoSortKey(path) {
+    const name = path.split('/').pop();
+    const modern = /^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})\./.exec(name);
+    if (modern) return Number(modern.slice(1,6).join(''));
+    // Historical files: photos/YYYY/MM/YYYYMMDDHHmmss-random.jpg
+    const legacy = /^(20\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(name);
+    return legacy ? Number(legacy.slice(1,6).join('')) : 0;
+}
+
 
 function send(res, status, value) {
     res.statusCode = status;
@@ -110,8 +130,9 @@ module.exports = async function handler(req, res) {
             const images = (data.tree || [])
                 .filter(item => item.type === 'blob' && item.path.startsWith(ROOT) &&
                     /\.(jpg|jpeg|png|webp)$/i.test(item.path))
-                .sort((a, b) => b.path.localeCompare(a.path))
-                .slice(0, 400)
+                .sort((a, b) => photoSortKey(a.path) - photoSortKey(b.path) ||
+                    a.path.localeCompare(b.path))
+                .slice(-400)
                 .map(item => ({ id: item.path, url: rawUrl(item.path) + '?v=' + encodeURIComponent(item.sha) }));
             res.setHeader('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=5');
             return send(res, 200, { images });
@@ -134,10 +155,8 @@ module.exports = async function handler(req, res) {
             return send(res, 400, { error: 'Chỉ hỗ trợ JPG, PNG, WebP dưới 2,35 MB.' });
         }
 
-        const time = new Date().toISOString();
-        const month = time.slice(0, 7).replace('-', '/');
-        const name = time.replace(/[-:TZ.]/g, '') + '-' + crypto.randomBytes(6).toString('hex') + '.' + image.ext;
-        const path = ROOT + month + '/' + name;
+        const name = photoMinuteName() + '.' + image.ext;
+        const path = ROOT + name;
         const saved = await github('contents/' + path, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -151,6 +170,11 @@ module.exports = async function handler(req, res) {
         return send(res, 201, { path, url: rawUrl(path, commit) });
     } catch (error) {
         console.error('Photo API error:', error.message);
+        if (error.status === 409 || error.status === 422) {
+            return send(res, 409, {
+                error: 'Đã có ảnh đăng trong phút này. Vui lòng đợi sang phút tiếp theo, không ghi đè ảnh cũ.'
+            });
+        }
         if (error.status === 401 || error.status === 403) {
             return send(res, 502, { error: 'GitHub từ chối token hoặc quyền lưu ảnh.' });
         }
