@@ -100,8 +100,10 @@
 
         .bouquet {
             position: absolute;
-            bottom: -4.3%;
-            right: -4.3%;
+            /* Move flower slightly inward so the wrapping paper stays visible,
+               including on shorter desktop viewports. */
+            bottom: 4.5%;
+            right: 1.5%;
             width: 54.3%;
             height: 60%;
             z-index: 15;
@@ -277,3 +279,81 @@
             color: #633f2b
         }
 
+
+        /* Mobile: a larger readable card without changing the desktop design.
+           Keep the envelope entrance animation / card rotation intact. */
+        @media (max-width: 600px) {
+            .artboard {
+                width: min(100vw, 460px);
+                height: min(100vw, 460px);
+            }
+
+            .hcard {
+                width: 79%;
+                height: 94%;
+                padding: 6% 5.5% 8%;
+            }
+
+            .card-border {
+                top: 12px;
+                right: 12px;
+                bottom: 12px;
+                left: 12px;
+            }
+
+            .script-title {
+                font-size: clamp(28px, 8vw, 36px);
+                line-height: 1.05;
+                margin-top: 7%;
+                margin-bottom: 0;
+                white-space: nowrap;
+            }
+
+            .main-title {
+                font-size: clamp(18px, 5.2vw, 24px);
+                line-height: 1.2;
+                letter-spacing: 0;
+                margin-bottom: 5%;
+                white-space: nowrap;
+            }
+
+            .body-text {
+                font-size: clamp(13px, 3.55vw, 15.5px);
+                line-height: 1.45;
+                margin-bottom: 4%;
+                color: #54311f;
+                text-wrap: pretty;
+            }
+
+            /* Desktop line breaks were hand-authored for a smaller font size.
+               Let mobile reflow naturally, with spaces after each <br>. */
+            .body-text br { display: none; }
+
+            .signature {
+                font-size: clamp(11px, 3vw, 14px);
+                padding-right: 4%;
+                line-height: 1.2;
+            }
+
+            /* Avoid hiding the enlarged card's text under the bouquet. */
+            .bouquet {
+                /* Slightly lower/right so enlarged paragraphs remain readable. */
+                width: 45%;
+                height: 49%;
+                right: -2%;
+                bottom: -2%;
+            }
+        }
+
+        /* Reduce size only on very short phones in landscape. */
+        @media (max-width: 600px) and (max-height: 620px) {
+            .artboard {
+                width: min(96vw, 78dvh);
+                height: min(96vw, 78dvh);
+            }
+        }
+
+        @media (max-width: 360px) and (min-height: 500px) {
+            .hcard { width: 82%; height: 106%; }
+            .body-text { font-size: 12.5px; line-height: 1.4; }
+        }
