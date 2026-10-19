@@ -132,7 +132,6 @@
     backdrop-filter: blur(12px); font-size: 12px; text-decoration: none;
     font-family: 'Be Vietnam Pro', sans-serif;
 }
-.share-privacy { font: 400 11px/1.55 'Be Vietnam Pro', sans-serif; color: #744252; margin: 9px 0 16px; }
 @media (max-width: 460px) {
     .camera-gallery-link { top: 50px; right: 12px; }
 }
