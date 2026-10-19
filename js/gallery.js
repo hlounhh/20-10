@@ -1,4 +1,5 @@
 import { fetchPhotos } from './photos.js';
+import { gridSlot, gridColumnForIndex, firstIndexInColumn } from './galleryOrder.js';
 
 const $ = id => document.getElementById(id);
 const track = $('track');
@@ -92,7 +93,8 @@ function layout() {
     const oldStep = columnStep();
     const oldLeft = track.scrollLeft;
     const firstColumn = oldStep > 0 ? Math.floor(oldLeft / oldStep) : 0;
-    const anchorId = oldLeft > 2 ? images[firstColumn * rows]?.id : null;
+    const anchorId = oldLeft > 2 ?
+        images[firstIndexInColumn(firstColumn, rows, columns)]?.id : null;
     const anchorOffset = oldStep > 0 ? oldLeft - firstColumn * oldStep : 0;
 
     rows = grid.rows;
@@ -103,14 +105,26 @@ function layout() {
     track.style.setProperty('--rows', String(rows));
     track.style.setProperty('--columns', String(columns));
     track.style.setProperty('--tile-width', grid.tileWidth.toFixed(4) + 'px');
+    images.forEach((entry, index) => {
+        const tile = tiles.get(entry.id);
+        if (tile) positionTile(tile, index);
+    });
     syncPlaceholders();
 
     if (anchorId) {
         const index = images.findIndex(photo => photo.id === anchorId);
         if (index >= 0) {
-            track.scrollLeft = Math.floor(index / rows) * columnStep() + anchorOffset;
+            track.scrollLeft = gridColumnForIndex(index, rows, columns) * columnStep() + anchorOffset;
         }
     }
+}
+
+// Place sequential photos horizontally, then continue with the next row.
+// Once all rows in a page are filled, extend grid to the right.
+function positionTile(node, index) {
+    const slot = gridSlot(index, rows, columns);
+    node.style.gridColumn = String(slot.column + 1);
+    node.style.gridRow = String(slot.row + 1);
 }
 
 function makeTile(entry, index) {
@@ -141,6 +155,7 @@ function updateTile(cell, entry, index) {
     img.alt = 'Khoảnh khắc ' + (index + 1);
     img.loading = index < 12 ? 'eager' : 'lazy';
     cell.setAttribute('aria-label', 'Xem ảnh ' + (index + 1));
+    positionTile(cell, index);
 }
 
 function syncPlaceholders() {
@@ -153,6 +168,7 @@ function syncPlaceholders() {
         placeholders.push(node);
         track.append(node);
     }
+    placeholders.forEach((node, i) => positionTile(node, images.length + i));
 }
 
 // One real DOM card per photo: neighbouring pictures remain visible.
@@ -297,23 +313,24 @@ function applyPhotos(next) {
     const oldLeft = track.scrollLeft;
     const step = columnStep();
     const firstColumn = step > 0 ? Math.floor(oldLeft / step) : 0;
-    const anchorId = oldLeft > 2 ? images[firstColumn * rows]?.id : null;
+    const anchorId = oldLeft > 2 ?
+        images[firstIndexInColumn(firstColumn, rows, columns)]?.id : null;
     const offset = anchorId ? oldLeft - firstColumn * step : 0;
 
     const old = images;
     const added = next.length - old.length;
-    const prependOnly = added > 0 && old.every((item, i) => next[added + i].id === item.id);
+    const appendOnly = added > 0 && old.every((item, i) =>
+        next[i].id === item.id && next[i].url === item.url);
     images = next;
 
-    if (prependOnly) {
-        // Only insert new nodes, leaving decoded existing images in place.
-        const newNodes = next.slice(0, added).map((item, index) => {
-            const node = makeTile(item, index);
+    if (appendOnly) {
+        // Only append new images, retaining old decoded image nodes.
+        const newNodes = next.slice(old.length).map((item, index) => {
+            const node = makeTile(item, old.length + index);
             tiles.set(item.id, node);
             return node;
         });
-        track.prepend(...newNodes);
-        next.slice(added).forEach((item, index) => updateTile(tiles.get(item.id), item, index + added));
+        track.append(...newNodes);
     } else {
         // Reuse existing DOM/image elements also for removals and reordering.
         const fragment = document.createDocumentFragment();
@@ -344,7 +361,7 @@ function applyPhotos(next) {
     if (anchorId && step > 0) {
         const newIndex = images.findIndex(item => item.id === anchorId);
         if (newIndex >= 0) {
-            track.scrollLeft = Math.floor(newIndex / rows) * step + offset;
+            track.scrollLeft = gridColumnForIndex(newIndex, rows, columns) * step + offset;
         } else {
             track.scrollLeft = oldLeft;
         }
