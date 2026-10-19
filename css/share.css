@@ -121,3 +121,9 @@
             color: var(--deep);
             border: 2.5px solid #ffb3c1
         }
+
+/* Safety guard: legacy cached markup must never show a gallery shortcut on the camera. */
+.camera-gallery-link,
+#wrap a[href="./gallery.html"] {
+    display: none !important;
+}
