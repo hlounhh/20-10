@@ -6,7 +6,6 @@ const add = $('add');
 const uploadDialog = $('uploadDialog');
 const uploadForm = $('uploadForm');
 const fileInput = $('photoFiles');
-const keyInput = $('uploadKey');
 const submitButton = $('uploadSubmit');
 const viewer = $('viewer');
 const stage = $('viewerStage');
@@ -167,9 +166,7 @@ async function optimize(file) {
 uploadForm.addEventListener('submit', async e => {
     e.preventDefault();
     const files = Array.from(fileInput.files);
-    const key = keyInput.value.trim();
     if (!files.length) { $('uploadStatus').textContent = 'Hãy chọn ít nhất một ảnh.'; return; }
-    if (!key) { keyInput.focus(); uploadForm.reportValidity(); return; }
     if (files.length > 10) { $('uploadStatus').textContent = 'Chỉ chọn tối đa 10 ảnh mỗi lần.'; return; }
     submitButton.disabled = true;
     let saved = 0;
@@ -177,13 +174,12 @@ uploadForm.addEventListener('submit', async e => {
         for (let i = 0; i < files.length; i++) {
             $('uploadStatus').textContent = 'Đang xử lý ảnh ' + (i + 1) + ' / ' + files.length + '…';
             const dataUrl = await optimize(files[i]);
-            const savedPhoto = await uploadPhoto(dataUrl, key);
+            const savedPhoto = await uploadPhoto(dataUrl);
             // Add immediately: list API may be cached for a few seconds.
             images.unshift({ id: savedPhoto.path, url: savedPhoto.url, optimistic: true });
             saved++;
             render();
         }
-        keyInput.value = '';
         uploadDialog.close();
         status('Đã lưu ' + saved + ' ảnh thành công ♡', true);
         // Refresh shortly after upload so server-side canonical ordering catches up.
