@@ -40,6 +40,32 @@ Mở `http://localhost:8000`, cho phép camera và kiểm tra Console/Network tr
 5. Chạm thiệp sẽ hiện hộp thoại chia sẻ; nút **Không** đóng hộp thoại.
 6. Nút **Có** thực hiện quy trình upload cũ (chỉ thử với ảnh được phép chia sẻ).
 
-## Lưu ý bảo mật (có sẵn từ bản gốc)
 
-File `js/share.js` hiện vẫn chứa thông tin xác thực upload ở phía trình duyệt. **Đây không phải nơi an toàn để cất secret**: cần thu hồi/thay mật khẩu đang dùng và thiết kế xác thực ở backend trước khi phát hành công khai. Không chuyển nguyên chuỗi này sang cấu hình frontend rồi coi là đã bảo mật. Refactor này chưa sửa API để tránh phá vỡ tính năng upload hiện tại.
+## Kho ảnh ngang (/gallery.html)
+
+- Dựng 2 hàng ô vuông, vuốt ngang native với cuộn quán tính trên iOS và Android; không dùng thư viện carousel hay animation kéo bằng JS.
+- Ô **+** chọn tối đa 10 ảnh; ảnh được co về tối đa 1440px và nén JPEG tại trình duyệt trước khi tải lên.
+- Click/tap xem ảnh lớn, vuốt trái/phải để chuyển ảnh; nút mũi tên cho máy tính.
+- CSS: `css/gallery.css`. UI: `js/gallery.js`. Client API chung: `js/upload.js`.
+- API: `api/photos.js` (Vercel Node.js Function), dùng GitHub Contents REST API ghi ảnh và Git Tree API đọc danh sách.
+- Ảnh được lưu trong `photos/YYYY/MM/` của repository và được hiển thị bằng `raw.githubusercontent.com` (đường dẫn đọc ảnh trực tiếp của GitHub). Không dùng jsDelivr, vì điều khoản của CDN đó không cho phép sử dụng như một dịch vụ lưu trữ ảnh upload.
+
+### BẮT BUỘC cấu hình trên Vercel
+
+Vào Vercel → Project → Settings → Environment Variables, thêm:
+- `GITHUB_TOKEN`: fine-grained Personal Access Token chỉ cấp **Contents: Read and write** cho repo `hlounhh/20-10`. Token phải được lưu ở phía máy chủ, tuyệt đối không thêm vào JS frontend/repo.
+- `GALLERY_UPLOAD_KEY`: mật khẩu dài, khó đoán, mới hoàn toàn, dùng để xác thực các lượt đăng ảnh.
+- `GITHUB_REPOSITORY` (tuỳ chọn, mặc định `hlounhh/20-10`), `GITHUB_BRANCH` (tuỳ chọn, mặc định `main`).
+
+Sau khi thêm biến môi trường, **Redeploy** bản production. Nếu thiếu 2 biến bắt buộc, trang thư viện vẫn hiển thị nhưng thao tác đăng ảnh sẽ trả lỗi 503. Không dùng mật khẩu upload cũ từng bị nhúng trong JS công khai. Nên thu hồi credential cũ ở dịch vụ upload trước đó.
+
+> **Riêng tư:** repo là public, mọi ảnh đăng lên có thể được xem/tải bởi bất kỳ ai. Xoá file không đảm bảo xoá lịch sử Git và cache ngoài. Chỉ đăng khi có sự đồng ý của người trong ảnh. Không dùng GitHub làm kho ảnh dung lượng lớn; GitHub Raw không có cam kết SLA CDN ảnh. Khi dự án phát triển, cân nhắc GitHub Pages cho asset tĩnh và object storage (R2/S3/Supabase Storage) cho ảnh do người dùng upload.
+
+### Chạy thử
+
+- Chạy frontend: `python -m http.server 8000`. API serverless sẽ **không chạy** với lệnh này.
+- Chạy cả API: `npx vercel dev` (cần đăng nhập Vercel và cấu hình biến môi trường như trên).
+- Mở `/gallery.html`, thử cuộn quán tính trên điện thoại, xem ảnh và upload.
+- Nút chia sẻ ảnh ở `index.html` đã gọi `/api/photos` thay cho endpoint ngoài; cần mã tải ảnh lên rồi chuyển về trang gallery.
+
+Lưu ý: Ghép file vào GitHub tạo một commit mới cho mỗi ảnh; cách này hợp album nhỏ và demo, không phù hợp làm dịch vụ upload công cộng quy mô lớn. Mã tải ảnh nên giữ riêng tư để tránh spam và lạm dụng GitHub.
